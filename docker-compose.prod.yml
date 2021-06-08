@@ -1,0 +1,16 @@
+version: '3.2'
+
+services:
+  watchtower:
+    command: --label-enable --cleanup --interval 300
+    image: containrrr/watchtower
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+    network_mode: none
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  doc-cache:
+    image: sebastianmontero/${DOCKER_IMAGE_NAME}:latest
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"

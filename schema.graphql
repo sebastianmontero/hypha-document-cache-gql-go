@@ -1,0 +1,21 @@
+type Content @dgraph(type: "Content") {
+    label: String! @search(by: [term]) @dgraph(pred: "label")
+    value: String! @search(by: [term]) @dgraph(pred: "value")
+    type: String! @search(by: [term]) @dgraph(pred: "type")
+    contentSequence: Int! @dgraph(pred: "content_sequence")
+    timeValue: DateTime @search @dgraph(pred: "timeValue")
+    intValue: Int @search @dgraph(pred: "intValue")
+}
+
+type ContentGroup @dgraph(type: "ContentGroup") {
+    contentGroupSequence: Int! @dgraph(pred: "content_group_sequence")
+    contents: [Content]! @dgraph(pred: "contents")
+}
+
+type Document @dgraph(type: "Document") {
+    hash: String @search(by: [exact]) @dgraph(pred: "hash")
+    creator: String @search(by: [term]) @dgraph(pred: "creator")
+    createdDate: DateTime @search @dgraph(pred: "created_date")
+    contentGroups: [ContentGroup]! @dgraph(pred: "content_groups")
+}
+

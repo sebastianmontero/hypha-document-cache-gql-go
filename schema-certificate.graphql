@@ -1,0 +1,3 @@
+type Certificate @dgraph(type: "Certificate") {
+    certifier: String! @search(by: [term]) @dgraph(pred: "certifier")
+}

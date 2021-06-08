@@ -1,0 +1,4 @@
+{
+  "operationName": "IntrospectionQuery",
+  "query": "{\n getGQLSchema{\n id\n schema\n      generatedSchema\n    }\n  }"
+}

@@ -1,0 +1,8 @@
+version: '3.2'
+
+services:
+  doc-cache:
+    build: 
+      context: .
+    volumes:
+      - .:${CODE_PATH}

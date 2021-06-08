@@ -1,0 +1,18 @@
+# import * from "./dgraph-admin-schema.graphql"
+{
+  getGQLSchema{
+    id
+    schema
+    generatedSchema
+  }
+}
+
+mutation($schema: String!) {
+  updateGQLSchema(
+    input: {
+      set: {
+        schema:$schema
+      }
+    }
+  ){}
+}

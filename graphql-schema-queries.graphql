@@ -1,0 +1,22 @@
+# Playground https://www.graphqlbin.com/
+# Endpoint https://graph-test.hypha.earth/graphql
+{
+  __type(name:"Document"){
+   	name
+  	kind
+    fields{
+      name
+      type{
+        kind
+        name
+        ofType{
+          name
+          kind
+          ofType{
+            name
+          }
+        }
+      }
+    }
+  }
+}

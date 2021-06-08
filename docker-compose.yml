@@ -1,0 +1,48 @@
+version: '3.2'
+    
+services:
+  zero:
+    image: dgraph/dgraph:latest
+    volumes:
+      - /mnt/${DGRAPH_DATA_DIR}:/dgraph
+    ports:
+      - ${DGRAPH_ZERO_INTERNAL_PORT}:${DGRAPH_ZERO_INTERNAL_PORT}
+      - ${DGRAPH_ZERO_HTTP_PORT}:${DGRAPH_ZERO_HTTP_PORT}
+    restart: on-failure
+    command: dgraph zero --my=zero:${DGRAPH_ZERO_INTERNAL_PORT} -o ${DGRAPH_PORT_OFFSET}
+  alpha:
+    image: dgraph/dgraph:latest
+    volumes:
+      - /mnt/${DGRAPH_DATA_DIR}:/dgraph
+    ports:
+      - ${DGRAPH_ALPHA_INTERNAL_PORT}:${DGRAPH_ALPHA_INTERNAL_PORT}
+      - ${DGRAPH_ALPHA_HTTP_PORT}:${DGRAPH_ALPHA_HTTP_PORT}
+      - ${DGRAPH_ALPHA_EXTERNAL_PORT}:${DGRAPH_ALPHA_EXTERNAL_PORT}
+    restart: on-failure
+    command: dgraph alpha --whitelist 172.17.0.0:172.90.0.0,192.168.0.0:192.169.0.0 --my=alpha:${DGRAPH_ALPHA_INTERNAL_PORT} --lru_mb=2048 --zero=zero:${DGRAPH_ZERO_INTERNAL_PORT} -o ${DGRAPH_PORT_OFFSET}
+  ratel:
+    image: dgraph/dgraph:latest
+    ports:
+      - ${DGRAPH_RATEL_HTTP_PORT}:8000
+    command: dgraph-ratel
+  doc-cache:
+    command: /usr/local/go/bin/go run .
+    ports:
+      - ${PROMETHEUS_PORT}:${PROMETHEUS_PORT}
+    environment:
+      - CONTRACT_NAME
+      - DOC_TABLE_NAME
+      - EDGE_TABLE_NAME
+      - FIREHOSE_ENDPOINT
+      - DFUSE_API_KEY
+      - EOS_ENDPOINT
+      - DGRAPH_ALPHA_HOST
+      - DGRAPH_ALPHA_EXTERNAL_PORT
+      - START_BLOCK
+      - PROMETHEUS_PORT
+      - HEART_BEAT_FREQUENCY
+    depends_on:
+      - zero
+      - alpha
+      - ratel
+    restart: on-failure
