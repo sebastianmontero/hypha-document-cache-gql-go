@@ -4,26 +4,27 @@ import (
 	"github.com/vektah/gqlparser/ast"
 )
 
-var DocumentFieldArgs = []*SimplifiedField{
-	{
+var DocumentFieldArgs = map[string]*SimplifiedField{
+	"hash": {
+		IsID:    true,
 		Name:    "hash",
 		Type:    "String",
 		NonNull: true,
 		Index:   "exact",
 	},
-	{
+	"type": {
 		Name:    "type",
 		Type:    "String",
 		NonNull: true,
 		Index:   "exact",
 	},
-	{
+	"creator": {
 		Name:    "creator",
 		Type:    "String",
 		NonNull: true,
 		Index:   "exact",
 	},
-	{
+	"createdDate": {
 		Name:    "createdDate",
 		Type:    "DateTime",
 		NonNull: true,
@@ -32,7 +33,7 @@ var DocumentFieldArgs = []*SimplifiedField{
 }
 
 const DocumentFields = `
-		hash: String! @search(by: [exact])
+		hash: String! @id @search(by: [exact])
 		type: String! @search(by: [exact])
 		creator: String! @search(by: [exact])
 		createdDate: DateTime! @search(by: [hour])

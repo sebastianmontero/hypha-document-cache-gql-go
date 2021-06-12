@@ -1,37 +1,15 @@
 package gql_test
 
 import (
-	"log"
+	"fmt"
 	"testing"
 
-	"github.com/sebastianmontero/dgraph-go-client/dgraph"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 	"github.com/vektah/gqlparser/ast"
 	"gotest.tools/assert"
 )
 
-var dg *dgraph.Dgraph
-var admin *gql.Admin
-
-func adminTestSetup() {
-	if admin == nil {
-		admin = gql.NewAdmin("http://localhost:8080/admin")
-	}
-	if dg == nil {
-		var err error
-		dg, err = dgraph.New("")
-		if err != nil {
-			log.Fatal(err, "Unable to create dgraph")
-		}
-	}
-	err := dg.DropAll()
-	if err != nil {
-		log.Fatal(err, "Unable to drop all")
-	}
-}
-
 func TestUpdateSchema(t *testing.T) {
-	adminTestSetup()
 	// schemaDef := "type Person { name: String }"
 	schemaDef :=
 		`
@@ -48,6 +26,7 @@ func TestUpdateSchema(t *testing.T) {
 	currentSchema, err := admin.GetCurrentSchema()
 	assert.NilError(t, err)
 	// fmt.Println("Schema: ", currentSchema)
+	// fmt.Println(gql.DefinitionToString(currentSchema.GetType("Role"), 0))
 	assert.Assert(t, currentSchema.GetType("Role") != nil)
 
 	//***Add Type using string***
@@ -76,21 +55,26 @@ func TestUpdateSchema(t *testing.T) {
 	// fmt.Println("Schema: ", currentSchema)
 
 	//***Add Type programatically***
-	assignmentFields := []*gql.SimplifiedField{
-		{
-			Name:    "assignee",
-			Type:    "String",
-			NonNull: true,
-			Index:   "term",
+	assignmentType := &gql.SimplifiedType{
+		Name: "Assignment",
+		Fields: map[string]*gql.SimplifiedField{
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"role": {
+				Name:    "role",
+				Type:    "Role",
+				IsArray: true,
+			},
 		},
-		{
-			Name:    "role",
-			Type:    "Role",
-			IsArray: true,
-		},
+		ExtendsDocument: true,
 	}
-	err = schema.UpdateType("Assignment", assignmentFields, true)
+	changed, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -99,12 +83,71 @@ func TestUpdateSchema(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Assert(t, currentSchema.GetType("Person") != nil)
 	assert.Assert(t, currentSchema.GetType("Role") != nil)
-	assertType(t, "Assignment", assignmentFields, true, currentSchema)
+	assertType(t, assignmentType, currentSchema)
+	// fmt.Println("Schema: ", currentSchema.String())
+	// *** There shouldn't be any changes for updating schema with the same type
+	changed, err = schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, false)
 
+	changed, err = currentSchema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, false)
+
+	//***Add Type programatically with id***
+	badgeType := &gql.SimplifiedType{
+		Name: "Badge",
+		Fields: map[string]*gql.SimplifiedField{
+			"name": {
+				IsID:    true,
+				Name:    "name",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+		},
+		ExtendsDocument: false,
+	}
+	changed, err = schema.UpdateType(badgeType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
+	// fmt.Println("Schema: ", schema.String())
+
+	// for i := 0; i < 2000; i++ {
+	// 	tType := &gql.SimplifiedType{
+	// 		Name: fmt.Sprintf("Assignment%v", i),
+	// 		Fields: map[string]*gql.SimplifiedField{
+	// 			"assignee": {
+	// 				Name:    "assignee",
+	// 				Type:    "String",
+	// 				NonNull: true,
+	// 				Index:   "term",
+	// 			},
+	// 			"role": {
+	// 				Name:    "role",
+	// 				Type:    "Role",
+	// 				IsArray: true,
+	// 			},
+	// 		},
+	// 		ExtendsDocument: true,
+	// 	}
+	// 	changed, err = schema.UpdateType(tType)
+	// 	assert.NilError(t, err)
+	// 	assert.Equal(t, changed, true)
+	// }
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	currentSchema, err = admin.GetCurrentSchema()
+	assert.NilError(t, err)
+	// fmt.Println("Schema: ", currentSchema.String())
+	assert.Assert(t, currentSchema.GetType("Person") != nil)
+	assert.Assert(t, currentSchema.GetType("Role") != nil)
+	assertType(t, assignmentType, currentSchema)
+	assertType(t, badgeType, currentSchema)
 }
 
 func TestUpdateType(t *testing.T) {
-	adminTestSetup()
 	schemaDef :=
 		`
 			type Person {
@@ -121,40 +164,48 @@ func TestUpdateType(t *testing.T) {
 	assert.Assert(t, currentSchema.GetType("Person") != nil)
 	// fmt.Println("Schema: ", currentSchema)
 
-	newFields := []*gql.SimplifiedField{
-		{
-			Name:    "name",
-			Type:    "String",
-			Index:   "term",
-			NonNull: false,
+	personType := &gql.SimplifiedType{
+		Name: "Person",
+		Fields: map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				Index:   "term",
+				NonNull: false,
+			},
+			"picks": {
+				Name:    "picks",
+				Type:    "Int64",
+				IsArray: true,
+				NonNull: false,
+			},
+			"age": {
+				Name:    "age",
+				Type:    "Int64",
+				NonNull: false,
+			},
 		},
-		{
-			Name:    "picks",
-			Type:    "Int64",
-			IsArray: true,
-			NonNull: false,
-		},
-		{
-			Name:    "age",
-			Type:    "Int64",
-			NonNull: false,
-		},
+		ExtendsDocument: false,
 	}
 
 	// ***Adding Document interface
-	err = schema.UpdateType("Person", newFields, false)
+	changed, err := schema.UpdateType(personType)
 	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
 	currentSchema, err = admin.GetCurrentSchema()
 	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
 	assert.NilError(t, err)
-	assertType(t, "Person", newFields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 	// fmt.Println("Schema: ", currentSchema)
+	// ***Shouldn't change for same type
+	changed, err = currentSchema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, false)
 }
 
 func TestAddFieldIfNotExists(t *testing.T) {
-	adminTestSetup()
 	schemaDef :=
 		`
 			type Person {
@@ -162,27 +213,33 @@ func TestAddFieldIfNotExists(t *testing.T) {
 				picks: [Int64!]!
 			}
 		`
-	fields := []*gql.SimplifiedField{
-		{
-			Name:    "name",
-			Type:    "String",
-			Index:   "term",
-			NonNull: true,
+	personType := &gql.SimplifiedType{
+		Name: "Person",
+		Fields: map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				Index:   "term",
+				NonNull: true,
+			},
+			"picks": {
+				Name:    "picks",
+				Type:    "Int64",
+				IsArray: true,
+				NonNull: true,
+			},
 		},
-		{
-			Name:    "picks",
-			Type:    "Int64",
-			IsArray: true,
-			NonNull: true,
-		},
+		ExtendsDocument: false,
 	}
+
 	schema, err := gql.NewSchema(schemaDef, true)
 	assert.NilError(t, err)
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
+	// fmt.Println("Schema: ", schema)
 	currentSchema, err := admin.GetCurrentSchema()
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 	// fmt.Println("Schema: ", currentSchema)
 	newField := &gql.SimplifiedField{
 		Name:    "age",
@@ -192,14 +249,15 @@ func TestAddFieldIfNotExists(t *testing.T) {
 	added, err := schema.AddFieldIfNotExists("Person", newField)
 	assert.NilError(t, err)
 	assert.Equal(t, added, true)
-	fields = append(fields, newField)
+	personType.Fields["age"] = newField
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
 	currentSchema, err = admin.GetCurrentSchema()
 	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	// fmt.Println("Schema: ", currentSchema.String())
+	assertType(t, personType, currentSchema)
 
 	added, err = schema.AddFieldIfNotExists("Person", newField)
 	assert.NilError(t, err)
@@ -210,13 +268,33 @@ func TestAddFieldIfNotExists(t *testing.T) {
 	currentSchema, err = admin.GetCurrentSchema()
 	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 
 	// fmt.Println("Schema: ", currentSchema)
 }
 
+func TestAddFieldIfNotExistsShouldFailForNonNullField(t *testing.T) {
+	schemaDef :=
+		`
+			type Person {
+				name: String! @search(by: [term])
+				picks: [Int64!]!
+			}
+		`
+
+	schema, err := gql.NewSchema(schemaDef, true)
+	assert.NilError(t, err)
+
+	newField := &gql.SimplifiedField{
+		Name:    "age",
+		Type:    "Int64",
+		NonNull: true,
+	}
+	_, err = schema.AddFieldIfNotExists("Person", newField)
+	assert.ErrorContains(t, err, "can't add non null field")
+}
+
 func TestAddEdge(t *testing.T) {
-	adminTestSetup()
 	schemaDef :=
 		`
 			type Role {
@@ -227,19 +305,23 @@ func TestAddEdge(t *testing.T) {
 				picks: [Int64!]!
 			}
 		`
-	fields := []*gql.SimplifiedField{
-		{
-			Name:    "name",
-			Type:    "String",
-			Index:   "term",
-			NonNull: true,
+	personType := &gql.SimplifiedType{
+		Name: "Person",
+		Fields: map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				Index:   "term",
+				NonNull: true,
+			},
+			"picks": {
+				Name:    "picks",
+				Type:    "Int64",
+				IsArray: true,
+				NonNull: true,
+			},
 		},
-		{
-			Name:    "picks",
-			Type:    "Int64",
-			IsArray: true,
-			NonNull: true,
-		},
+		ExtendsDocument: false,
 	}
 	schema, err := gql.NewSchema(schemaDef, true)
 	assert.NilError(t, err)
@@ -247,7 +329,7 @@ func TestAddEdge(t *testing.T) {
 	assert.NilError(t, err)
 	currentSchema, err := admin.GetCurrentSchema()
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 	// fmt.Println("Schema: ", currentSchema)
 	newField := &gql.SimplifiedField{
 		Name:    "roles",
@@ -259,14 +341,14 @@ func TestAddEdge(t *testing.T) {
 	added, err := schema.AddEdge("Person", "roles", "Role")
 	assert.NilError(t, err)
 	assert.Equal(t, added, true)
-	fields = append(fields, newField)
+	personType.Fields["roles"] = newField
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
 	currentSchema, err = admin.GetCurrentSchema()
 	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 
 	added, err = schema.AddEdge("Person", "roles", "Role")
 	assert.NilError(t, err)
@@ -277,13 +359,12 @@ func TestAddEdge(t *testing.T) {
 	currentSchema, err = admin.GetCurrentSchema()
 	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
 	assert.NilError(t, err)
-	assertType(t, "Person", fields, false, currentSchema)
+	assertType(t, personType, currentSchema)
 
 	// fmt.Println("Schema: ", currentSchema)
 }
 
 func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
-	adminTestSetup()
 	schemaDef :=
 		`
 			type Person {
@@ -296,93 +377,105 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 		`
 	schema, err := gql.NewSchema(schemaDef, true)
 	assert.NilError(t, err)
-	personFields := []*gql.SimplifiedField{
-		{
-			Name:  "name",
-			Type:  "String",
-			Index: "term",
+
+	roleType := &gql.SimplifiedType{
+		Name: "Role",
+		Fields: map[string]*gql.SimplifiedField{
+			"hash": {
+				Name:    "hash",
+				Type:    "String",
+				Index:   "exact",
+				NonNull: true,
+			},
+			"type": {
+				Name:    "type",
+				Type:    "String",
+				Index:   "exact",
+				NonNull: true,
+			},
 		},
-		{
-			Name:    "picks",
-			Type:    "Int64",
-			IsArray: true,
-		},
+		ExtendsDocument: false,
 	}
 
-	roleFields := []*gql.SimplifiedField{
-		{
-			Name:    "hash",
-			Type:    "String",
-			Index:   "exact",
-			NonNull: true,
+	personType := &gql.SimplifiedType{
+		Name: "Person",
+		Fields: map[string]*gql.SimplifiedField{
+			"name": {
+				Name:  "name",
+				Type:  "String",
+				Index: "term",
+			},
+			"picks": {
+				Name:    "picks",
+				Type:    "Int64",
+				IsArray: true,
+			},
 		},
-		{
-			Name:    "type",
-			Type:    "String",
-			Index:   "exact",
-			NonNull: true,
-		},
+		ExtendsDocument: true,
 	}
 	// ***Adding Document interface
-	err = schema.UpdateType("Person", personFields, true)
+	_, err = schema.UpdateType(personType)
 	assert.ErrorContains(t, err, "can't add Document interface")
 
 	// ***Removing Document interface
-	err = schema.UpdateType("Role", roleFields, false)
+	_, err = schema.UpdateType(roleType)
 	assert.ErrorContains(t, err, "can't remove Document interface to type")
 
 	// ***Add non null field
-	roleFields = append(roleFields, &gql.SimplifiedField{
+	personType.ExtendsDocument = false
+	roleType.ExtendsDocument = true
+	roleType.Fields["name"] = &gql.SimplifiedField{
 		Name:    "name",
 		Type:    "String",
 		Index:   "term",
 		NonNull: true,
-	})
-	err = schema.UpdateType("Role", roleFields, true)
+	}
+
+	_, err = schema.UpdateType(roleType)
 	assert.ErrorContains(t, err, "can't add non null field")
 
 	// ***From null to non null
-	personFields[0].NonNull = true
-	err = schema.UpdateType("Person", personFields, false)
+	personType.Fields["name"].NonNull = true
+	_, err = schema.UpdateType(personType)
 	assert.ErrorContains(t, err, "can't make nullable field: name, not nullable")
 
 	// ***From non array to array
-	personFields[0].NonNull = false
-	personFields[0].IsArray = true
-	err = schema.UpdateType("Person", personFields, false)
+	personType.Fields["name"].NonNull = false
+	personType.Fields["name"].IsArray = true
+	_, err = schema.UpdateType(personType)
 	assert.ErrorContains(t, err, "can't make scalar field: name an array")
 
 	// ***From array to non array
-	personFields[0].IsArray = false
-	personFields[1].IsArray = false
-	err = schema.UpdateType("Person", personFields, false)
+	personType.Fields["name"].IsArray = false
+	personType.Fields["picks"].IsArray = false
+	_, err = schema.UpdateType(personType)
 	assert.ErrorContains(t, err, "can't make array field: picks a scalar")
 
 	// ***Change array type
-	personFields[1].IsArray = true
-	personFields[1].Type = "String"
-	err = schema.UpdateType("Person", personFields, false)
-	assert.ErrorContains(t, err, "can't make array field: picks of type: Int64, an array of type: String")
+	personType.Fields["picks"].IsArray = true
+	personType.Fields["picks"].Type = "String"
+	_, err = schema.UpdateType(personType)
+	assert.ErrorContains(t, err, "can't make array field: picks of type: Int64, array of type: String")
 
 	// ***Change scalar type
-	personFields[1].Type = "Int64"
-	personFields[0].Type = "DateTime"
-	err = schema.UpdateType("Person", personFields, false)
-	assert.ErrorContains(t, err, "can't make scalar field: name of type: String, a scalar of type: DateTime")
+	personType.Fields["picks"].Type = "Int64"
+	personType.Fields["name"].Type = "DateTime"
+	_, err = schema.UpdateType(personType)
+	assert.ErrorContains(t, err, "can't make scalar field: name of type: String, scalar of type: DateTime")
 
 }
 
-func assertType(t *testing.T, name string, fields []*gql.SimplifiedField, extendsDocument bool, schema *gql.Schema) {
-	typeDef := schema.GetType(name)
-	assert.Assert(t, typeDef != nil)
-	if extendsDocument {
+func assertType(t *testing.T, expected *gql.SimplifiedType, schema *gql.Schema) {
+	typeDef := schema.GetType(expected.Name)
+	assert.Assert(t, typeDef != nil, fmt.Sprintf("For type: %v", expected.Name))
+	if expected.ExtendsDocument {
 		assert.Equal(t, gql.HasInterface(typeDef, "Document"), true)
-		assert.Equal(t, len(fields)+len(gql.DocumentFieldArgs), len(typeDef.Fields))
+		assert.Equal(t, len(expected.Fields)+len(gql.DocumentFieldArgs), len(typeDef.Fields))
 	} else {
 		assert.Equal(t, gql.HasInterface(typeDef, "Document"), false)
-		assert.Equal(t, len(fields), len(typeDef.Fields))
+		assert.Equal(t, len(expected.Fields), len(typeDef.Fields))
 	}
-	for _, field := range fields {
+	for _, field := range expected.Fields {
 		fieldDef := typeDef.Fields.ForName(field.Name)
 		assert.Assert(t, fieldDef != nil)
 		assertField(t, field, fieldDef)
@@ -391,7 +484,7 @@ func assertType(t *testing.T, name string, fields []*gql.SimplifiedField, extend
 
 func assertField(t *testing.T, expected *gql.SimplifiedField, actual *ast.FieldDefinition) {
 	assert.Equal(t, expected.Name, actual.Name)
-	assert.Equal(t, expected.NonNull, actual.Type.NonNull)
+	assert.Equal(t, expected.NonNull, actual.Type.NonNull, fmt.Sprintf("For field: %v", expected.Name))
 	if expected.IsArray {
 		assert.Assert(t, actual.Type.Elem != nil)
 		assert.Equal(t, expected.Type, actual.Type.Elem.NamedType)
@@ -399,8 +492,14 @@ func assertField(t *testing.T, expected *gql.SimplifiedField, actual *ast.FieldD
 		assert.Assert(t, actual.Type.Elem == nil)
 		assert.Equal(t, expected.Type, actual.Type.NamedType)
 	}
+	directive := actual.Directives.ForName("id")
+	if expected.IsID {
+		assert.Assert(t, directive != nil)
+	} else {
+		assert.Assert(t, directive == nil)
+	}
 	if expected.Index != "" {
-		directive := actual.Directives.ForName("search")
+		directive = actual.Directives.ForName("search")
 		assert.Assert(t, directive != nil)
 		argument := directive.Arguments.ForName("by")
 		assert.Assert(t, directive != nil)

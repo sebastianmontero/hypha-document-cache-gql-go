@@ -7,6 +7,7 @@ require (
 	github.com/dfuse-io/dfuse-eosio v0.1.1-docker.0.20210106190033-47b917933e19
 	github.com/dfuse-io/pbgo v0.0.6-0.20210108215028-712d6889e94a
 	github.com/dgraph-io/dgo/v2 v2.2.0
+	github.com/iancoleman/strcase v0.1.3
 	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/is v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.2.1

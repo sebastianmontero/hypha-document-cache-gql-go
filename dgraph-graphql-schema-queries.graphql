@@ -16,3 +16,12 @@ mutation($schema: String!) {
     }
   ){}
 }
+
+{
+  health{
+    instance
+    status
+    ongoing
+    indexing
+  }
+}

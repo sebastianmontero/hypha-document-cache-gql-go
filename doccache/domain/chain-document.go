@@ -1,10 +1,50 @@
-package doccache
+package domain
 
 import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/iancoleman/strcase"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 )
+
+var CGL_ContentGroup = "content_group_label"
+
+var CL_type = "system_type"
+
+var (
+	ContentType_Asset       = "asset"
+	ContentType_Checksum256 = "checksum256"
+	ContentType_Int64       = "int64"
+	ContentType_Name        = "name"
+	ContentType_Time        = "time_point"
+	ContentType_String      = "string"
+)
+
+var (
+	GQLType_Int64  = "Int64"
+	GQLType_Time   = "DateTime"
+	GQLType_String = "string"
+)
+
+var ContentTypeGQLTypeMap = map[string]string{
+	ContentType_Asset:       GQLType_String,
+	ContentType_Checksum256: GQLType_String,
+	ContentType_Int64:       GQLType_Int64,
+	ContentType_Name:        GQLType_String,
+	ContentType_Time:        GQLType_Time,
+	ContentType_String:      GQLType_String,
+}
+
+var ContentTypeIndexMap = map[string]string{
+	ContentType_Asset:       "term",
+	ContentType_Checksum256: "exact",
+	ContentType_Int64:       "int64",
+	ContentType_Name:        "exact",
+	ContentType_Time:        "hour",
+	ContentType_String:      "regexp",
+}
 
 //Docs helper to enable docs decoding
 type Docs struct {
@@ -209,6 +249,34 @@ type ChainContent struct {
 // 	return nil
 // }
 
+func (m *ChainContent) GetType() string {
+	return m.Value[0].(string)
+}
+
+func (m *ChainContent) GetGQLType() string {
+	return ContentTypeGQLTypeMap[m.GetType()]
+}
+
+func (m *ChainContent) GetValue() string {
+	return fmt.Sprintf("%v", m.Value[1])
+}
+
+func (m *ChainContent) GetGQLValue() (interface{}, error) {
+	gqlType := m.GetGQLType()
+
+	if gqlType == GQLType_Time {
+		return FormatDateTime(m.GetValue()), nil
+	} else if gqlType == GQLType_Int64 {
+		intValue, err := strconv.ParseInt(m.GetValue(), 0, 64)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse content value to int64, value: %v for label: %v, error: %v", m.GetValue(), m.Label, err)
+		}
+		return intValue, nil
+	} else {
+		return m.GetValue(), nil
+	}
+}
+
 func (m *ChainContent) String() string {
 	return fmt.Sprintf("ChainContent{Label: %v, Value: %v}", m.Label, m.Value)
 }
@@ -234,6 +302,63 @@ type ChainDocument struct {
 	Certificates  []*ChainCertificate `json:"certificates,omitempty"`
 }
 
+func (m *ChainDocument) ToSimplifiedInstance() (*gql.SimplifiedInstance, error) {
+
+	fields := make(map[string]*gql.SimplifiedField)
+	values := map[string]interface{}{
+		"hash":        m.Hash,
+		"creator":     m.Creator,
+		"createdDate": FormatDateTime(m.CreatedDate),
+	}
+
+	for i, contentGroup := range m.ContentGroups {
+		contentGroupLabel := FindChainContent(contentGroup, CGL_ContentGroup)
+		if contentGroupLabel == nil {
+			return nil, fmt.Errorf("content group: %v for document with hash: %v does not have a content_group_label", i, m.Hash)
+		}
+		prefix := fmt.Sprintf("%v_", strcase.ToLowerCamel(contentGroupLabel.GetValue()))
+		for _, content := range contentGroup {
+			if content.Label != CGL_ContentGroup {
+				name := fmt.Sprintf("%v%v", prefix, strcase.ToLowerCamel(content.Label))
+				fields[name] = &gql.SimplifiedField{
+					Name:  name,
+					Type:  content.GetGQLType(),
+					Index: ContentTypeIndexMap[content.GetType()],
+				}
+				value, err := content.GetGQLValue()
+				if err != nil {
+					return nil, fmt.Errorf("failed to get gql value content: %v name for doc with hash: %v, error: %v", name, m.Hash, err)
+				}
+				values[name] = value
+			}
+		}
+	}
+	typeName, ok := values[CL_type].(string)
+	if !ok {
+		return nil, fmt.Errorf("document with hash: %v does not have a type", m.Hash)
+	}
+	delete(values, CL_type)
+	delete(fields, CL_type)
+	values["type"] = typeName
+	return &gql.SimplifiedInstance{
+		SimplifiedType: &gql.SimplifiedType{
+			Name:            strcase.ToCamel(typeName),
+			Fields:          fields,
+			ExtendsDocument: true,
+		},
+		Values: values,
+	}, nil
+}
+
+func FindChainContent(contents []*ChainContent, label string) *ChainContent {
+	for _, content := range contents {
+		if content.Label == label {
+			return content
+		}
+	}
+	return nil
+}
+
 // func (m *ChainDocument) UnmarshalJSON(b []byte) error {
 // 	if err := json.Unmarshal(b, m); err != nil {
 // 		return err
@@ -246,50 +371,18 @@ func (m *ChainDocument) String() string {
 	return fmt.Sprintf("ChainDocument{ID: %v, Hash: %v, CreatedDate: %v, Creator: %v, Contents: %v, Certificates: %v}", m.ID, m.Hash, m.CreatedDate, m.Creator, m.ContentGroups, m.Certificates)
 }
 
-//ChainEdge domain object
-type ChainEdge struct {
-	Name string `json:"edge_name,omitempty"`
-	From string `json:"from_node,omitempty"`
-	To   string `json:"to_node,omitempty"`
-}
-
-// func (m *ChainEdge) UnmarshalJSON(b []byte) error {
-// 	if err := json.Unmarshal(b, m); err != nil {
-// 		return err
-// 	}
-// 	m.From = strings.ToUpper(m.From)
-// 	m.To = strings.ToUpper(m.To)
-// 	return nil
-// }
-
-func (m *ChainEdge) String() string {
-	return fmt.Sprintf("ChainEdge{Name: %v, From: %v, To: %v}", m.Name, m.From, m.To)
-}
-
-//Cursors helper to enable cursor decoding
-type Cursors struct {
-	Cursors []*Cursor `json:"cursors,omitempty"`
-}
-
-//Cursor domain object
-type Cursor struct {
-	UID    string   `json:"uid,omitempty"`
-	Cursor string   `json:"cursor,omitempty"`
-	DType  []string `json:"dgraph.type,omitempty"`
-}
-
-func (m *Cursor) String() string {
-	return fmt.Sprintf("Cursor{UID: %v, Cursor: %v, DType: %v}", m.UID, m.Cursor, m.DType)
-}
-
 //ToTime Converts string time to time.Time
 func ToTime(strTime string) *time.Time {
 	t, err := time.Parse("2006-01-02T15:04:05", strTime)
 	if err != nil {
 		t, err = time.Parse("2006-01-02T15:04:05.000", strTime)
-		if err != nil {
-			log.Errorf(err, "Failed to parse datetime: %v", strTime)
-		}
+		// if err != nil {
+		// 	log.Errorf(err, "Failed to parse datetime: %v", strTime)
+		// }
 	}
 	return &t
+}
+
+func FormatDateTime(datetime string) string {
+	return fmt.Sprintf("%vZ", datetime)
 }

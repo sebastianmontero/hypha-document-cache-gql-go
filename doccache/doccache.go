@@ -6,6 +6,7 @@ import (
 
 	"github.com/dgraph-io/dgo/v2/protos/api"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
@@ -108,7 +109,7 @@ type RequestConfig struct {
 type Doccache struct {
 	dgraph           *dgraph.Dgraph
 	documentFieldMap map[string]*dgraph.SchemaField
-	Cursor           *Cursor
+	Cursor           *domain.Cursor
 }
 
 //New creates a new doccache
@@ -158,7 +159,7 @@ func (m *Doccache) PrepareSchema() error {
 }
 
 //GetCursor Finds the current cursor
-func (m *Doccache) getCursor() (*Cursor, error) {
+func (m *Doccache) getCursor() (*domain.Cursor, error) {
 	query := `
 		{
 			cursors(func: type(Cursor)){
@@ -168,7 +169,7 @@ func (m *Doccache) getCursor() (*Cursor, error) {
 			}
 		}
 	`
-	cursors := &Cursors{}
+	cursors := &domain.Cursors{}
 	err := m.dgraph.Query(query, nil, cursors)
 	if err != nil {
 		return nil, err
@@ -180,8 +181,8 @@ func (m *Doccache) getCursor() (*Cursor, error) {
 	return m.createCursor()
 }
 
-func (m *Doccache) createCursor() (*Cursor, error) {
-	cursor := &Cursor{
+func (m *Doccache) createCursor() (*domain.Cursor, error) {
+	cursor := &domain.Cursor{
 		DType: []string{"Cursor"},
 	}
 	mutation, err := m.cursorMutation(cursor)
@@ -198,12 +199,12 @@ func (m *Doccache) createCursor() (*Cursor, error) {
 	return cursor, nil
 }
 
-func (m *Doccache) cursorMutation(cursor *Cursor) (*api.Mutation, error) {
+func (m *Doccache) cursorMutation(cursor *domain.Cursor) (*api.Mutation, error) {
 	return m.dgraph.JSONMutation(cursor, false)
 }
 
 //GetByHash Finds document by hash
-func (m *Doccache) GetByHash(hash string, rc *RequestConfig) (*Document, error) {
+func (m *Doccache) GetByHash(hash string, rc *RequestConfig) (*domain.Document, error) {
 	query := fmt.Sprintf(`
 		query docs($hash: string){
 			docs(func: eq(hash, $hash))
@@ -211,7 +212,7 @@ func (m *Doccache) GetByHash(hash string, rc *RequestConfig) (*Document, error) 
 		}
 	`, configureRequest(rc))
 
-	docs := &Docs{}
+	docs := &domain.Docs{}
 	err := m.dgraph.Query(query, map[string]string{"$hash": hash}, docs)
 	if err != nil {
 		return nil, err
@@ -260,7 +261,7 @@ func (m *Doccache) GetHashUIDMap(hashes []string) (map[string]string, error) {
 		}
 	`, strings.Join(hashes, ","))
 
-	docs := &Docs{}
+	docs := &domain.Docs{}
 	err := m.dgraph.Query(query, nil, docs)
 	if err != nil {
 		return nil, err
@@ -306,7 +307,7 @@ func (m *Doccache) UpdateCursor(cursor string) error {
 }
 
 //StoreDocument Creates a new document or updates its certificates
-func (m *Doccache) StoreDocument(chainDoc *ChainDocument, cursor string) error {
+func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	doc, err := m.GetByHash(chainDoc.Hash, &RequestConfig{Certificates: true})
 	if err != nil {
 		return err
@@ -330,7 +331,7 @@ func (m *Doccache) StoreDocument(chainDoc *ChainDocument, cursor string) error {
 }
 
 //DeleteDocument Deletes a document
-func (m *Doccache) DeleteDocument(chainDoc *ChainDocument, cursor string) error {
+func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	uid, err := m.GetUID(chainDoc.Hash)
 	if err != nil {
 		return err
@@ -345,7 +346,7 @@ func (m *Doccache) DeleteDocument(chainDoc *ChainDocument, cursor string) error 
 }
 
 //MutateEdge Creates/Deletes an edge
-func (m *Doccache) MutateEdge(chainEdge *ChainEdge, deleteOp bool, cursor string) error {
+func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor string) error {
 	err := m.updateDocumentTypeSchema(chainEdge.Name)
 	if err != nil {
 		return err
@@ -390,8 +391,8 @@ func (m *Doccache) updateDocumentTypeSchema(newField string) error {
 	return nil
 }
 
-func (m *Doccache) transformNew(chainDoc *ChainDocument) (*Document, error) {
-	doc, err := NewDocument(chainDoc)
+func (m *Doccache) transformNew(chainDoc *domain.ChainDocument) (*domain.Document, error) {
+	doc, err := domain.NewDocument(chainDoc)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse chain doc: %v \n error: %v", chainDoc, err)
 	}
@@ -408,7 +409,7 @@ func (m *Doccache) transformNew(chainDoc *ChainDocument) (*Document, error) {
 
 	for _, checksumContent := range checksumContents {
 		if uid, ok := hashUIDMap[checksumContent.Value]; ok {
-			checksumContent.Document = []*Document{
+			checksumContent.Document = []*domain.Document{
 				{
 					UID: uid,
 				},

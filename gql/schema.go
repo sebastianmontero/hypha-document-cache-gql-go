@@ -51,7 +51,8 @@ func (m *Schema) GetSimplifiedType(name string) (*SimplifiedType, error) {
 		if typeDef == nil {
 			return nil, nil
 		}
-		simplifiedType, err := NewSimplifiedType(typeDef)
+		var err error
+		simplifiedType, err = NewSimplifiedType(typeDef)
 		if err != nil {
 			return nil, err
 		}
@@ -67,36 +68,25 @@ func (m *Schema) GetType(name string) *ast.Definition {
 	return nil
 }
 
-func (m *Schema) UpdateType(name string, fields []*SimplifiedField, extendsDocument bool) error {
-	oldType, ok := m.Schema.Types[name]
-	if !ok {
-		m.Schema.Types[name] = CreateType(name, fields, extendsDocument)
-		return nil
+func (m *Schema) UpdateType(newType *SimplifiedType) (bool, error) {
+	oldType, err := m.GetSimplifiedType(newType.Name)
+	if err != nil {
+		return false, err
 	}
-	if extendsDocument && !HasInterface(oldType, "Document") {
-		return fmt.Errorf("can't add Document interface to type: %v", name)
+	// fmt.Println("OldType: ", oldType)
+	if oldType == nil {
+		m.Schema.Types[newType.Name] = CreateType(newType)
+		m.SimplifiedTypes[newType.Name] = newType
+		return true, nil
 	}
-	if !extendsDocument && HasInterface(oldType, "Document") {
-		return fmt.Errorf("can't remove Document interface to type: %v", name)
+	toAdd, toUpdate, err := oldType.PrepareUpdate(newType)
+	if err != nil {
+		return false, err
 	}
-	fieldDefs := &oldType.Fields
-	toAdd := make([]*SimplifiedField, 0)
-	toUpdate := make([]*SimplifiedField, 0)
-	for _, field := range fields {
-		oldField := fieldDefs.ForName(field.Name)
-		if oldField == nil {
-			if field.NonNull {
-				return fmt.Errorf("can't add non null field: %v to type: %v", field.Name, name)
-			}
-			toAdd = append(toAdd, field)
-		} else {
-			err := assertFieldUpdateIsValid(oldField, field)
-			if err != nil {
-				return err
-			}
-			toUpdate = append(toUpdate, field)
-		}
+	if len(toAdd) == 0 && len(toUpdate) == 0 {
+		return false, nil
 	}
+	fieldDefs := &m.GetType(newType.Name).Fields
 	for _, field := range toUpdate {
 		pos := findFieldPos(field.Name, *fieldDefs)
 		(*fieldDefs)[pos] = CreateField(field)
@@ -104,7 +94,10 @@ func (m *Schema) UpdateType(name string, fields []*SimplifiedField, extendsDocum
 	for _, field := range toAdd {
 		*fieldDefs = append(*fieldDefs, CreateField(field))
 	}
-	return nil
+	m.SimplifiedTypes[newType.Name] = newType
+	// fmt.Println("toAdd: ", toAdd)
+	// fmt.Println("toUpdate: ", toUpdate)
+	return true, nil
 }
 
 func (m *Schema) AddEdge(typeName, edgeName, edgeType string) (bool, error) {
@@ -116,6 +109,9 @@ func (m *Schema) AddEdge(typeName, edgeName, edgeType string) (bool, error) {
 }
 
 func (m *Schema) AddFieldIfNotExists(typeName string, field *SimplifiedField) (bool, error) {
+	if field.NonNull {
+		return false, fmt.Errorf("can't add non null field: %v to type: %v", field.Name, typeName)
+	}
 	typeDef := m.GetType(typeName)
 	if typeDef == nil {
 		return false, fmt.Errorf("failed to add field, type: %v not found", typeName)
@@ -150,25 +146,6 @@ func findFieldPos(name string, l ast.FieldList) int {
 	return -1
 }
 
-func assertFieldUpdateIsValid(oldField *ast.FieldDefinition, newField *SimplifiedField) error {
-	if newField.NonNull && !oldField.Type.NonNull {
-		return fmt.Errorf("can't make nullable field: %v, not nullable", newField.Name)
-	}
-	if newField.IsArray && oldField.Type.Elem == nil {
-		return fmt.Errorf("can't make scalar field: %v an array", newField.Name)
-	}
-	if !newField.IsArray && oldField.Type.Elem != nil {
-		return fmt.Errorf("can't make array field: %v a scalar", newField.Name)
-	}
-	if newField.IsArray && newField.Type != oldField.Type.Elem.NamedType {
-		return fmt.Errorf("can't make array field: %v of type: %v, an array of type: %v", newField.Name, oldField.Type.Elem.NamedType, newField.Type)
-	}
-	if !newField.IsArray && newField.Type != oldField.Type.NamedType {
-		return fmt.Errorf("can't make scalar field: %v of type: %v, a scalar of type: %v", newField.Name, oldField.Type.NamedType, newField.Type)
-	}
-	return nil
-}
-
 func (m *Schema) String() string {
 	out := &strings.Builder{}
 	fmttr := formatter.NewFormatter(out)
@@ -176,70 +153,73 @@ func (m *Schema) String() string {
 	return out.String()
 }
 
-func CreateType(name string, fields []*SimplifiedField, extendsDocument bool) *ast.Definition {
+func CreateType(simplifiedType *SimplifiedType) *ast.Definition {
 	interfaces := []string{}
 	var fieldDefs ast.FieldList
-	if extendsDocument {
+	if simplifiedType.ExtendsDocument {
 		fieldDefs = addFields(DocumentFieldArgs, fieldDefs)
 		interfaces = append(interfaces, "Document")
 	}
-	fieldDefs = addFields(fields, fieldDefs)
+	fieldDefs = addFields(simplifiedType.Fields, fieldDefs)
 
 	return &ast.Definition{
 		Kind:       ast.Object,
-		Name:       name,
+		Name:       simplifiedType.Name,
 		Fields:     fieldDefs,
 		Interfaces: interfaces,
 	}
 }
 
-func addFields(fields []*SimplifiedField, fieldList ast.FieldList) ast.FieldList {
+func addFields(fields map[string]*SimplifiedField, fieldList ast.FieldList) ast.FieldList {
 	for _, field := range fields {
 		fieldList = append(fieldList, CreateField(field))
 	}
 	return fieldList
 }
 
-func CreateField(args *SimplifiedField) *ast.FieldDefinition {
+func CreateField(field *SimplifiedField) *ast.FieldDefinition {
 
 	fieldType := &ast.Type{
-		NonNull: args.NonNull,
+		NonNull: field.NonNull,
 	}
-	if args.IsArray {
+	if field.IsArray {
 		fieldType.Elem = &ast.Type{
-			NamedType: args.Type,
+			NamedType: field.Type,
 			NonNull:   true,
 		}
 	} else {
-		fieldType.NamedType = args.Type
+		fieldType.NamedType = field.Type
 	}
 	var directives ast.DirectiveList
-
-	if args.Index != "" {
-		directives = ast.DirectiveList{
-			{
-				Name: "search",
-				Arguments: ast.ArgumentList{
-					{
-						Name: "by",
-						Value: &ast.Value{
-							Kind: ast.ListValue,
-							Children: ast.ChildValueList{
-								{
-									Value: &ast.Value{
-										Raw:  args.Index,
-										Kind: ast.EnumValue,
-									},
+	if field.IsID {
+		directives = append(directives, &ast.Directive{
+			Name: "id",
+		})
+	}
+	if field.Index != "" {
+		directives = append(directives, &ast.Directive{
+			Name: "search",
+			Arguments: ast.ArgumentList{
+				{
+					Name: "by",
+					Value: &ast.Value{
+						Kind: ast.ListValue,
+						Children: ast.ChildValueList{
+							{
+								Value: &ast.Value{
+									Raw:  field.Index,
+									Kind: ast.EnumValue,
 								},
 							},
 						},
 					},
 				},
 			},
-		}
+		})
+
 	}
 	return &ast.FieldDefinition{
-		Name:       args.Name,
+		Name:       field.Name,
 		Type:       fieldType,
 		Directives: directives,
 	}

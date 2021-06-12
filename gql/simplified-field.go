@@ -7,6 +7,7 @@ import (
 )
 
 type SimplifiedField struct {
+	IsID    bool
 	Name    string
 	Type    string
 	NonNull bool
@@ -14,8 +15,9 @@ type SimplifiedField struct {
 	IsArray bool
 }
 
-func NewFieldArgs(fieldDef *ast.FieldDefinition) (*SimplifiedField, error) {
+func NewSimplifiedField(fieldDef *ast.FieldDefinition) (*SimplifiedField, error) {
 	field := &SimplifiedField{
+		IsID:    fieldDef.Directives.ForName("id") != nil,
 		Name:    fieldDef.Name,
 		NonNull: fieldDef.Type.NonNull,
 	}
@@ -24,6 +26,7 @@ func NewFieldArgs(fieldDef *ast.FieldDefinition) (*SimplifiedField, error) {
 		field.Type = fieldDef.Type.NamedType
 	} else {
 		field.Type = fieldDef.Type.Elem.NamedType
+		field.IsArray = true
 	}
 
 	directive := fieldDef.Directives.ForName("search")
@@ -39,6 +42,10 @@ func NewFieldArgs(fieldDef *ast.FieldDefinition) (*SimplifiedField, error) {
 }
 
 func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
+
+	if new.IsID != m.IsID {
+		return fmt.Errorf("can't change id definition for field: %v", new.Name)
+	}
 	if new.NonNull && !m.NonNull {
 		return fmt.Errorf("can't make nullable field: %v, not nullable", new.Name)
 	}
@@ -53,7 +60,26 @@ func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 		if new.IsArray {
 			cardinality = "array"
 		}
-		return fmt.Errorf("can't make %v field: %v of type: %v, an %v of type: %v", cardinality, new.Name, m.Type, cardinality, new.Type)
+		return fmt.Errorf("can't make %v field: %v of type: %v, %v of type: %v", cardinality, new.Name, m.Type, cardinality, new.Type)
 	}
 	return nil
+}
+
+func (m *SimplifiedField) String() string {
+	return fmt.Sprintf(
+		`
+			SimplifiedField: {
+				IsId: %v,
+				Name: %v,
+				Type: %v,
+				NonNull: %v,
+				IsArray: %v,
+			}		
+		`,
+		m.IsID,
+		m.Name,
+		m.Type,
+		m.NonNull,
+		m.IsArray,
+	)
 }
