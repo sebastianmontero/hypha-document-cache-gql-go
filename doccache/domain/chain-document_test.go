@@ -2,11 +2,11 @@ package domain_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
 	"gotest.tools/assert"
 )
 
@@ -128,7 +128,7 @@ func TestToSimplifiedInstance(t *testing.T) {
 			"system_originalApprovedDate":  "2021-04-12T05:09:36.5Z",
 		},
 	}
-	assertSimplifiedInstance(t, simplifiedInstance, expectedSimplifiedInstance)
+	util.AssertSimplifiedInstance(t, simplifiedInstance, expectedSimplifiedInstance)
 	// certificationDate := "2020-11-12T20:27:47.000"
 	// chainDoc1.Certificates = []*domain.ChainCertificate{
 	// 	{
@@ -290,30 +290,4 @@ func TestChainDocUnmarshall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unmarshalling failed: %v", err)
 	}
-}
-
-func assertSimplifiedInstance(t *testing.T, actual, expected *gql.SimplifiedInstance) {
-	assertSimplifiedType(t, actual.SimplifiedType, expected.SimplifiedType)
-	assert.Equal(t, len(actual.Values), len(expected.Values))
-	for name, value := range expected.Values {
-		assert.Equal(t, actual.Values[name], value)
-	}
-}
-
-func assertSimplifiedType(t *testing.T, actual, expected *gql.SimplifiedType) {
-	assert.Equal(t, actual.Name, expected.Name)
-	assert.Equal(t, actual.ExtendsDocument, expected.ExtendsDocument)
-	assert.Equal(t, len(actual.Fields), len(expected.Fields))
-	for name, field := range expected.Fields {
-		assertSimplifiedField(t, actual.Fields[name], field)
-	}
-}
-
-func assertSimplifiedField(t *testing.T, actual, expected *gql.SimplifiedField) {
-	assert.Assert(t, actual != nil, fmt.Sprintf("For field %v", expected.Name))
-	assert.Equal(t, actual.IsID, expected.IsID)
-	assert.Equal(t, actual.Name, expected.Name)
-	assert.Equal(t, actual.NonNull, expected.NonNull)
-	assert.Equal(t, actual.Index, expected.Index)
-	assert.Equal(t, actual.IsArray, expected.IsArray)
 }

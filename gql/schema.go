@@ -9,6 +9,12 @@ import (
 	"github.com/vektah/gqlparser/formatter"
 )
 
+const (
+	GQLType_Int64  = "Int64"
+	GQLType_Time   = "DateTime"
+	GQLType_String = "String"
+)
+
 type Schema struct {
 	Schema          *ast.Schema
 	SimplifiedTypes map[string]*SimplifiedType
@@ -90,22 +96,20 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (bool, error) {
 	for _, field := range toUpdate {
 		pos := findFieldPos(field.Name, *fieldDefs)
 		(*fieldDefs)[pos] = CreateField(field)
+		oldType.Fields[field.Name] = field
 	}
 	for _, field := range toAdd {
 		*fieldDefs = append(*fieldDefs, CreateField(field))
+		oldType.Fields[field.Name] = field
 	}
-	m.SimplifiedTypes[newType.Name] = newType
+	// m.SimplifiedTypes[newType.Name] = newType
 	// fmt.Println("toAdd: ", toAdd)
 	// fmt.Println("toUpdate: ", toUpdate)
 	return true, nil
 }
 
 func (m *Schema) AddEdge(typeName, edgeName, edgeType string) (bool, error) {
-	return m.AddFieldIfNotExists(typeName, &SimplifiedField{
-		Name:    edgeName,
-		Type:    edgeType,
-		IsArray: true,
-	})
+	return m.AddFieldIfNotExists(typeName, NewEdgeField(edgeName, edgeType))
 }
 
 func (m *Schema) AddFieldIfNotExists(typeName string, field *SimplifiedField) (bool, error) {
@@ -117,8 +121,13 @@ func (m *Schema) AddFieldIfNotExists(typeName string, field *SimplifiedField) (b
 		return false, fmt.Errorf("failed to add field, type: %v not found", typeName)
 	}
 	if fieldDef := typeDef.Fields.ForName(field.Name); fieldDef == nil {
+		simplifiedType, err := m.GetSimplifiedType(typeName)
+		if err != nil {
+			return false, err
+		}
 		fieldDefs := &typeDef.Fields
 		*fieldDefs = append(*fieldDefs, CreateField(field))
+		simplifiedType.Fields[field.Name] = field
 		return true, nil
 	}
 	return false, nil

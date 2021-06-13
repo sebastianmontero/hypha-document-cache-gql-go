@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
 	"github.com/vektah/gqlparser/ast"
 	"gotest.tools/assert"
 )
@@ -203,6 +204,40 @@ func TestUpdateType(t *testing.T) {
 	changed, err = currentSchema.UpdateType(personType)
 	assert.NilError(t, err)
 	assert.Equal(t, changed, false)
+
+	//***Removing field
+	removedField := personType.Fields["picks"]
+	delete(personType.Fields, "picks")
+	// fmt.Println("Person: ", personType)
+	changed, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, false)
+
+	//***Adding field
+	personType.Fields["hobbie"] = &gql.SimplifiedField{
+		Name:    "hobbie",
+		Type:    "String",
+		NonNull: false,
+	}
+	// fmt.Println("Person: ", personType)
+	changed, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	currentSchema, err = admin.GetCurrentSchema()
+	// fmt.Println(gql.DefinitionToString(schema.GetType("Person"), 0))
+	assert.NilError(t, err)
+	//***Adding removed field, underlying schema should still have it
+	personType.Fields["picks"] = removedField
+	// ***Check simplified type was updated correctly
+	actualPersonType, err := schema.GetSimplifiedType("Person")
+	assert.NilError(t, err)
+	util.AssertSimplifiedType(t, actualPersonType, personType)
+	assertType(t, personType, currentSchema)
+	// fmt.Println("Schema: ", currentSchema)
+
 }
 
 func TestAddFieldIfNotExists(t *testing.T) {
@@ -250,6 +285,10 @@ func TestAddFieldIfNotExists(t *testing.T) {
 	assert.NilError(t, err)
 	assert.Equal(t, added, true)
 	personType.Fields["age"] = newField
+	// ***Check simplified type was updated correctly
+	actualPersonType, err := schema.GetSimplifiedType("Person")
+	assert.NilError(t, err)
+	util.AssertSimplifiedType(t, actualPersonType, personType)
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)

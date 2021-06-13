@@ -9,11 +9,11 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 )
 
-var CGL_ContentGroup = "content_group_label"
+const CGL_ContentGroup = "content_group_label"
 
-var CL_type = "system_type"
+const CL_type = "system_type"
 
-var (
+const (
 	ContentType_Asset       = "asset"
 	ContentType_Checksum256 = "checksum256"
 	ContentType_Int64       = "int64"
@@ -22,19 +22,13 @@ var (
 	ContentType_String      = "string"
 )
 
-var (
-	GQLType_Int64  = "Int64"
-	GQLType_Time   = "DateTime"
-	GQLType_String = "string"
-)
-
 var ContentTypeGQLTypeMap = map[string]string{
-	ContentType_Asset:       GQLType_String,
-	ContentType_Checksum256: GQLType_String,
-	ContentType_Int64:       GQLType_Int64,
-	ContentType_Name:        GQLType_String,
-	ContentType_Time:        GQLType_Time,
-	ContentType_String:      GQLType_String,
+	ContentType_Asset:       gql.GQLType_String,
+	ContentType_Checksum256: gql.GQLType_String,
+	ContentType_Int64:       gql.GQLType_Int64,
+	ContentType_Name:        gql.GQLType_String,
+	ContentType_Time:        gql.GQLType_Time,
+	ContentType_String:      gql.GQLType_String,
 }
 
 var ContentTypeIndexMap = map[string]string{
@@ -264,9 +258,9 @@ func (m *ChainContent) GetValue() string {
 func (m *ChainContent) GetGQLValue() (interface{}, error) {
 	gqlType := m.GetGQLType()
 
-	if gqlType == GQLType_Time {
+	if gqlType == gql.GQLType_Time {
 		return FormatDateTime(m.GetValue()), nil
-	} else if gqlType == GQLType_Int64 {
+	} else if gqlType == gql.GQLType_Int64 {
 		intValue, err := strconv.ParseInt(m.GetValue(), 0, 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse content value to int64, value: %v for label: %v, error: %v", m.GetValue(), m.Label, err)

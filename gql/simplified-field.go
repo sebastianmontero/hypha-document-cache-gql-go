@@ -41,6 +41,18 @@ func NewSimplifiedField(fieldDef *ast.FieldDefinition) (*SimplifiedField, error)
 	return field, nil
 }
 
+func NewEdgeField(edgeName, edgeType string) *SimplifiedField {
+	return &SimplifiedField{
+		Name:    edgeName,
+		Type:    edgeType,
+		IsArray: true,
+	}
+}
+
+func (m *SimplifiedField) IsObject() bool {
+	return m.Type != GQLType_Int64 && m.Type != GQLType_String && m.Type != GQLType_Time
+}
+
 func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 
 	if new.IsID != m.IsID {

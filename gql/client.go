@@ -17,9 +17,9 @@ func NewClient(endpoint string) *Client {
 	}
 }
 
-func (m *Client) Get(hash string, simplifiedType *SimplifiedType) (*SimplifiedInstance, error) {
+func (m *Client) Get(hash string, simplifiedType *SimplifiedType, projection []string) (*SimplifiedInstance, error) {
 
-	queryName, query := simplifiedType.GetStmt(hash)
+	queryName, query := simplifiedType.GetStmt(hash, projection)
 	req := graphql.NewRequest(query)
 	req.Var("hash", hash)
 	var response interface{}
@@ -38,14 +38,28 @@ func (m *Client) Get(hash string, simplifiedType *SimplifiedType) (*SimplifiedIn
 	}, nil
 }
 
+// func (m *Client) Add(simplifiedInstance *SimplifiedInstance) error {
+// 	simplifiedType := simplifiedInstance.SimplifiedType
+
+// 	query := simplifiedType.AddStmt()
+// 	req := graphql.NewRequest(query)
+// 	for name, value := range simplifiedInstance.Values {
+// 		req.Var(name, value)
+// 	}
+
+// 	err := m.client.Run(context.Background(), req, nil)
+// 	if err != nil {
+// 		return fmt.Errorf("failed inserting: %v, values: %v, stmt: %v error: %v", simplifiedType.Name, simplifiedInstance.Values, query, err)
+// 	}
+// 	return nil
+// }
+
 func (m *Client) Add(simplifiedInstance *SimplifiedInstance) error {
 	simplifiedType := simplifiedInstance.SimplifiedType
 
 	query := simplifiedType.AddStmt()
 	req := graphql.NewRequest(query)
-	for name, value := range simplifiedInstance.Values {
-		req.Var(name, value)
-	}
+	req.Var("input", simplifiedInstance.Values)
 
 	err := m.client.Run(context.Background(), req, nil)
 	if err != nil {

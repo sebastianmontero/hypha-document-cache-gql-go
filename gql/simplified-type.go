@@ -86,12 +86,11 @@ func (m *SimplifiedType) String() string {
 	)
 }
 
-func (m *SimplifiedType) GetStmt(hash string) (string, string) {
+func (m *SimplifiedType) GetStmt(hash string, projection []string) (string, string) {
 	queryName := fmt.Sprintf("get%v", m.Name)
 	docFields := ""
-
 	if m.ExtendsDocument {
-		docFields = queryFieldsStmt(DocumentFieldArgs)
+		docFields = queryFieldsStmt(DocumentFieldArgs, projection)
 	}
 	stmt := fmt.Sprintf(
 		`
@@ -104,69 +103,109 @@ func (m *SimplifiedType) GetStmt(hash string) (string, string) {
 		`,
 		queryName,
 		docFields,
-		queryFieldsStmt(m.Fields),
+		queryFieldsStmt(m.Fields, projection),
 	)
 
 	return queryName, stmt
 }
 
+// func toMap(values []string) map[string]bool {
+// 	if values == nil {
+// 		return nil
+// 	}
+// 	m := make(map[string]bool, len(values))
+// 	for _, value := range values {
+// 		m[value] = true
+// 	}
+// 	return m
+// }
+
+// func (m *SimplifiedType) AddStmt() string {
+
+// 	docParams := ""
+// 	docInputs := ""
+// 	if m.ExtendsDocument {
+// 		docParams = inputParamsStmt(DocumentFieldArgs, false)
+// 		docInputs = inputFieldsStmt(DocumentFieldArgs, false)
+// 	}
+// 	return fmt.Sprintf(
+// 		`
+// 			mutation(
+// 				%v
+// 				%v
+// 			) {
+// 				add%v(input: [
+// 					{
+// 						%v
+// 						%v
+// 					}
+// 				]){numUids}
+// 			}
+// 		`,
+// 		docParams,
+// 		inputParamsStmt(m.Fields, true),
+// 		m.Name,
+// 		docInputs,
+// 		inputFieldsStmt(m.Fields, true),
+// 	)
+// }
+
 func (m *SimplifiedType) AddStmt() string {
 
-	docParams := ""
-	docInputs := ""
-	if m.ExtendsDocument {
-		docParams = inputParamsStmt(DocumentFieldArgs, false)
-		docInputs = inputFieldsStmt(DocumentFieldArgs, false)
-	}
 	return fmt.Sprintf(
 		`
-			mutation(
-				%v
-				%v
-			) {
-				add%v(input: [
-					{
-						%v
-						%v
-					}
-				]){numUids}
+			mutation($input: [Add%vInput!]!) {
+				add%v(input: $input){numUids}
 			}
 		`,
-		docParams,
-		inputParamsStmt(m.Fields, true),
 		m.Name,
-		docInputs,
-		inputFieldsStmt(m.Fields, true),
+		m.Name,
 	)
 }
 
-func queryFieldsStmt(fields map[string]*SimplifiedField) string {
-	return join(fields, queryFieldStmt, "\n", false)
+func queryFieldsStmt(fields map[string]*SimplifiedField, projection []string) string {
+	var filtered map[string]*SimplifiedField
+	if projection == nil {
+		filtered = fields
+	} else {
+		filtered = make(map[string]*SimplifiedField)
+		for _, fieldName := range projection {
+			if field, ok := fields[fieldName]; ok {
+				filtered[fieldName] = field
+			}
+		}
+	}
+	return join(filtered, queryFieldStmt, "\n", false)
 }
 
-func inputFieldsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
-	return join(fields, inputFieldStmt, ",\n", trimEnd)
-}
+// func inputFieldsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
+// 	return join(fields, inputFieldStmt, ",\n", trimEnd)
+// }
 
-func inputParamsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
-	return join(fields, inputParamStmt, ",\n", trimEnd)
-}
+// func inputParamsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
+// 	return join(fields, inputParamStmt, ",\n", trimEnd)
+// }
 
 func queryFieldStmt(field *SimplifiedField) string {
-	return fmt.Sprintf("%v", field.Name)
-}
-
-func inputFieldStmt(field *SimplifiedField) string {
-	return fmt.Sprintf("%v: $%v", field.Name, field.Name)
-}
-
-func inputParamStmt(field *SimplifiedField) string {
-	nonNull := ""
-	if field.NonNull {
-		nonNull = "!"
+	if field.IsObject() {
+		return fmt.Sprintf("%v{hash}", field.Name)
+	} else {
+		return fmt.Sprintf("%v", field.Name)
 	}
-	return fmt.Sprintf("$%v: %v%v", field.Name, field.Type, nonNull)
+
 }
+
+// func inputFieldStmt(field *SimplifiedField) string {
+// 	return fmt.Sprintf("%v: $%v", field.Name, field.Name)
+// }
+
+// func inputParamStmt(field *SimplifiedField) string {
+// 	nonNull := ""
+// 	if field.NonNull {
+// 		nonNull = "!"
+// 	}
+// 	return fmt.Sprintf("$%v: %v%v", field.Name, field.Type, nonNull)
+// }
 
 func join(fields map[string]*SimplifiedField, fn toFieldStmt, separator string, trimEnd bool) string {
 	q := &strings.Builder{}
