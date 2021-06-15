@@ -82,7 +82,7 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (bool, error) {
 	// fmt.Println("OldType: ", oldType)
 	if oldType == nil {
 		m.Schema.Types[newType.Name] = CreateType(newType)
-		m.SimplifiedTypes[newType.Name] = newType
+		m.SimplifiedTypes[newType.Name] = newType.Clone()
 		return true, nil
 	}
 	toAdd, toUpdate, err := oldType.PrepareUpdate(newType)

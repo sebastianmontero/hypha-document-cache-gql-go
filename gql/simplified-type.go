@@ -32,6 +32,31 @@ func NewSimplifiedType(typeDef *ast.Definition) (*SimplifiedType, error) {
 	}, nil
 }
 
+func (m *SimplifiedType) Clone() *SimplifiedType {
+	fields := make(map[string]*SimplifiedField, len(m.Fields))
+	for name, field := range m.Fields {
+		fields[name] = field
+	}
+	return &SimplifiedType{
+		Name:            m.Name,
+		Fields:          fields,
+		ExtendsDocument: m.ExtendsDocument,
+	}
+}
+
+func (m *SimplifiedType) GetIdField() (*SimplifiedField, error) {
+	if m.ExtendsDocument {
+		return DocumentFieldArgs["hash"], nil
+	} else {
+		for _, field := range m.Fields {
+			if field.IsID {
+				return field, nil
+			}
+		}
+	}
+	return nil, fmt.Errorf("type: %v has no id field", m.Name)
+}
+
 func (m *SimplifiedType) GetField(name string) *SimplifiedField {
 	if field, ok := m.Fields[name]; ok {
 		return field
@@ -86,27 +111,34 @@ func (m *SimplifiedType) String() string {
 	)
 }
 
-func (m *SimplifiedType) GetStmt(hash string, projection []string) (string, string) {
-	queryName := fmt.Sprintf("get%v", m.Name)
+func (m *SimplifiedType) GetStmt(projection []string) (string, string, error) {
+
+	id, err := m.GetIdField()
+	if err != nil {
+		return "", "", err
+	}
+	queryName := fmt.Sprintf("query%v", m.Name)
 	docFields := ""
 	if m.ExtendsDocument {
 		docFields = queryFieldsStmt(DocumentFieldArgs, projection)
 	}
 	stmt := fmt.Sprintf(
 		`
-			query($hash: String!){
-				%v(hash: $hash){
+			query(%v){
+				%v(filter: { %v }){
 					%v
 					%v
 				}
 			}
 		`,
+		getIdsInputStmt(id),
 		queryName,
+		getIdsFilterStmt(id),
 		docFields,
 		queryFieldsStmt(m.Fields, projection),
 	)
 
-	return queryName, stmt
+	return queryName, stmt, nil
 }
 
 // func toMap(values []string) map[string]bool {
@@ -154,13 +186,65 @@ func (m *SimplifiedType) AddStmt() string {
 
 	return fmt.Sprintf(
 		`
-			mutation($input: [Add%vInput!]!) {
-				add%v(input: $input){numUids}
+			mutation($input: [Add%vInput!]!, $upsert: Boolean) {
+				add%v(input: $input, upsert: $upsert){numUids}
 			}
 		`,
 		m.Name,
 		m.Name,
 	)
+}
+
+func (m *SimplifiedType) UpdateStmt() (string, error) {
+	id, err := m.GetIdField()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(
+		`
+			mutation(%v, $set: %vPatch, $remove: %vPatch) {
+				update%v(input: { filter: { %v }, set: $set, remove: $remove }){numUids}
+			}
+		`,
+		getIdInputStmt(id),
+		m.Name,
+		m.Name,
+		m.Name,
+		getIdFilterStmt(id),
+	), nil
+}
+
+func (m *SimplifiedType) DeleteStmt() (string, error) {
+	id, err := m.GetIdField()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf(
+		`
+			mutation(%v) {
+				delete%v(filter: { %v }){numUids}
+			}
+		`,
+		getIdInputStmt(id),
+		m.Name,
+		getIdFilterStmt(id),
+	), nil
+}
+
+func getIdInputStmt(id *SimplifiedField) string {
+	return fmt.Sprintf("$id: %v!", id.Type)
+}
+
+func getIdsInputStmt(id *SimplifiedField) string {
+	return fmt.Sprintf("$ids: [%v!]!", id.Type)
+}
+
+func getIdFilterStmt(id *SimplifiedField) string {
+	return fmt.Sprintf("%v: { eq: $id }", id.Name)
+}
+
+func getIdsFilterStmt(id *SimplifiedField) string {
+	return fmt.Sprintf("%v: { in: $ids }", id.Name)
 }
 
 func queryFieldsStmt(fields map[string]*SimplifiedField, projection []string) string {

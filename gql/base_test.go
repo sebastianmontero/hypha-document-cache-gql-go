@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
@@ -37,10 +38,14 @@ func beforeAll() {
 			log.Fatal(err, "Unable to create dgraph")
 		}
 	}
+}
+
+func beforeEach() {
 	err := dg.DropAll()
 	if err != nil {
 		log.Fatal(err, "Unable to drop all")
 	}
+	time.Sleep(time.Second * 2)
 }
 
 func afterAll() {
