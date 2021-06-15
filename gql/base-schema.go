@@ -40,8 +40,21 @@ const DocumentFields = `
 `
 
 const BaseSchema = `
+
+	type Certificate {
+		id: ID!
+		certifier: String! @search(by: [exact])
+		notes: String! @search(by: [term])
+		certification_date: DateTime! @search(by: [hour])
+	}
+
 	interface Document {` +
 	DocumentFields + `
+	}
+
+	type Cursor {
+		id: String! @id @search(by: [exact])
+		cursor: String!
 	}
 
 	type TypeVersion {
@@ -51,7 +64,35 @@ const BaseSchema = `
 	
 `
 
+var CursorSimplifiedType = &SimplifiedType{
+	Name: "Cursor",
+	Fields: map[string]*SimplifiedField{
+		"id": {
+			Name:    "id",
+			IsID:    true,
+			Type:    "String",
+			Index:   "exact",
+			NonNull: true,
+		},
+		"cursor": {
+			Name:    "cursor",
+			Type:    "String",
+			NonNull: true,
+		},
+	},
+}
+
 var BaseSchemaSource = &ast.Source{
 	Input:   BaseSchema,
 	BuiltIn: false,
+}
+
+func NewCursorInstance(id, cursor string) *SimplifiedInstance {
+	return &SimplifiedInstance{
+		SimplifiedType: CursorSimplifiedType,
+		Values: map[string]interface{}{
+			"id":     id,
+			"cursor": cursor,
+		},
+	}
 }

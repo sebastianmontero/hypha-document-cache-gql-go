@@ -47,7 +47,7 @@ func TestAdd(t *testing.T) {
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
-	err = client.Add(assignmentInstance, false)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
 
 	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
@@ -92,7 +92,7 @@ func TestAdd(t *testing.T) {
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
-	err = client.Add(personInstance, false)
+	err = client.Mutate(personInstance.AddMutation(false))
 	assert.NilError(t, err)
 
 	actualPersonInstance, err := client.GetOne(personHash, personType, nil)
@@ -142,7 +142,7 @@ func TestUpdate(t *testing.T) {
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
-	err = client.Add(assignmentInstance, false)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
 
 	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
@@ -165,7 +165,9 @@ func TestUpdate(t *testing.T) {
 	}
 	baseAssignmentType, err := schema.GetSimplifiedType("Assignment")
 	assert.NilError(t, err)
-	err = client.UpdateInstance(assignmentInstance, actualAssignmentInstance)
+	mutation, err := assignmentInstance.UpdateMutation(actualAssignmentInstance)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
 	actualAssignmentInstance, err = client.GetOne(assignmentHash, assignmentType, nil)
@@ -212,7 +214,9 @@ func TestUpdate(t *testing.T) {
 
 	baseAssignmentType, err = schema.GetSimplifiedType("Assignment")
 	assert.NilError(t, err)
-	err = client.UpdateInstance(assignmentInstance, actualAssignmentInstance)
+	mutation, err = assignmentInstance.UpdateMutation(actualAssignmentInstance)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
 	actualAssignmentInstance, err = client.GetOne(assignmentHash, baseAssignmentType, nil)
@@ -292,9 +296,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
-	err = client.Add(assignment1Instance, false)
+	err = client.Mutate(assignment1Instance.AddMutation(false))
 	assert.NilError(t, err)
-	err = client.Add(personInstance, false)
+	err = client.Mutate(personInstance.AddMutation(false))
 	assert.NilError(t, err)
 
 	personType.Fields["assignments"] = gql.NewEdgeField("assignments", "Assignment")
@@ -313,7 +317,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	assert.NilError(t, err)
 	_, err = admin.GetCurrentSchema()
 	assert.NilError(t, err)
-	err = client.Update(personHash, setPersonValues, nil, personType)
+	mutation, err := personType.UpdateMutation(personHash, setPersonValues, nil)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
 	actualPersonInstance, err := client.GetOne(personHash, personType, nil)
@@ -340,7 +346,7 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 			"votes":       30,
 		},
 	}
-	err = client.Add(assignment2Instance, false)
+	err = client.Mutate(assignment2Instance.AddMutation(false))
 	assert.NilError(t, err)
 
 	//***Add a new assignment to edge
@@ -350,8 +356,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	setPersonValues = map[string]interface{}{
 		"assignments": []map[string]interface{}{assignmentRef},
 	}
-
-	err = client.Update(personHash, setPersonValues, nil, personType)
+	mutation, err = personType.UpdateMutation(personHash, setPersonValues, nil)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
 	actualPersonInstance, err = client.GetOne(personHash, personType, nil)
@@ -374,7 +381,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		"assignments": []map[string]interface{}{assignmentRef},
 	}
 
-	err = client.Update(personHash, nil, removePersonValues, personType)
+	mutation, err = personType.UpdateMutation(personHash, nil, removePersonValues)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
 	actualPersonInstance, err = client.GetOne(personHash, personType, nil)
@@ -427,4 +436,126 @@ func filterNullValues(values map[string]interface{}) map[string]interface{} {
 		}
 	}
 	return filtered
+}
+
+func TestDelete(t *testing.T) {
+	beforeEach()
+	schema, err := gql.NewSchema("", true)
+	assert.NilError(t, err)
+	assignmentType := &gql.SimplifiedType{
+		Name: "Assignment",
+		Fields: map[string]*gql.SimplifiedField{
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"votes": {
+				Name: "votes",
+				Type: "Int64",
+			},
+		},
+		ExtendsDocument: true,
+	}
+	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignmentInstance := &gql.SimplifiedInstance{
+		SimplifiedType: assignmentType,
+		Values: map[string]interface{}{
+			"hash":        assignmentHash,
+			"createdDate": "2020-11-12T18:27:47.000Z",
+			"creator":     "dao.hypha",
+			"type":        "assignment",
+			"assignee":    "alice",
+			"votes":       20,
+		},
+	}
+	changed, err := schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+
+	mutation, err := assignmentInstance.DeleteMutation()
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err = client.GetOne(assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+	assert.Assert(t, actualAssignmentInstance == nil)
+
+}
+
+func TestMultipleMutations(t *testing.T) {
+	beforeEach()
+	schema, err := gql.NewSchema("", true)
+	assert.NilError(t, err)
+	assignmentType := &gql.SimplifiedType{
+		Name: "Assignment",
+		Fields: map[string]*gql.SimplifiedField{
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"votes": {
+				Name: "votes",
+				Type: "Int64",
+			},
+		},
+		ExtendsDocument: true,
+	}
+	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignmentInstance := &gql.SimplifiedInstance{
+		SimplifiedType: assignmentType,
+		Values: map[string]interface{}{
+			"hash":        assignmentHash,
+			"createdDate": "2020-11-12T18:27:47.000Z",
+			"creator":     "dao.hypha",
+			"type":        "assignment",
+			"assignee":    "alice",
+			"votes":       20,
+		},
+	}
+	changed, err := schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, changed, true)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+
+	cursorId := "c1"
+	cursorInstance := gql.NewCursorInstance(cursorId, "cursor1")
+
+	err = client.Mutate(
+		assignmentInstance.AddMutation(false),
+		cursorInstance.AddMutation(true),
+	)
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+
+	actualCursorInstance, err := client.GetOne(cursorId, gql.CursorSimplifiedType, nil)
+	assert.NilError(t, err)
+
+	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
+	assertInstance(t, actualCursorInstance, cursorInstance)
+
 }

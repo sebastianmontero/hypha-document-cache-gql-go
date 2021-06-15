@@ -3,9 +3,35 @@ package gql
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/machinebox/graphql"
 )
+
+type Mutation struct {
+	ParamStmt    string
+	MutationStmt string
+	Params       map[string]interface{}
+}
+
+func (m *Mutation) HasParams() bool {
+	return len(m.Params) > 0
+}
+
+func (m *Mutation) String() string {
+	return fmt.Sprintf(
+		`
+	    Mutation{
+				ParamStmt: %v
+				MutationStmt: %v,
+				Params: %v
+			}	
+		`,
+		m.ParamStmt,
+		m.MutationStmt,
+		m.Params,
+	)
+}
 
 type Client struct {
 	client *graphql.Client
@@ -60,106 +86,35 @@ func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projecti
 	return instances, nil
 }
 
-// func (m *Client) Add(simplifiedInstance *SimplifiedInstance) error {
-// 	simplifiedType := simplifiedInstance.SimplifiedType
-
-// 	query := simplifiedType.AddStmt()
-// 	req := graphql.NewRequest(query)
-// 	for name, value := range simplifiedInstance.Values {
-// 		req.Var(name, value)
-// 	}
-
-// 	err := m.client.Run(context.Background(), req, nil)
-// 	if err != nil {
-// 		return fmt.Errorf("failed inserting: %v, values: %v, stmt: %v error: %v", simplifiedType.Name, simplifiedInstance.Values, query, err)
-// 	}
-// 	return nil
-// }
-
-func (m *Client) Add(simplifiedInstance *SimplifiedInstance, upsert bool) error {
-	simplifiedType := simplifiedInstance.SimplifiedType
-
-	query := simplifiedType.AddStmt()
-	req := graphql.NewRequest(query)
-	req.Var("input", simplifiedInstance.Values)
-	req.Var("upsert", upsert)
-
+func (m *Client) Mutate(mutations ...*Mutation) error {
+	paramStmt := &strings.Builder{}
+	mutationsStmt := &strings.Builder{}
+	for _, mutation := range mutations {
+		if mutation.HasParams() {
+			paramStmt.WriteString(mutation.ParamStmt)
+			paramStmt.WriteString(",")
+		}
+		mutationsStmt.WriteString(mutation.MutationStmt)
+		mutationsStmt.WriteString("\n")
+	}
+	stmt := fmt.Sprintf(
+		`
+			mutation(%v){
+				%v
+			}
+		`,
+		paramStmt.String(),
+		mutationsStmt.String(),
+	)
+	req := graphql.NewRequest(stmt)
+	for _, mutation := range mutations {
+		for name, value := range mutation.Params {
+			req.Var(name, value)
+		}
+	}
 	err := m.client.Run(context.Background(), req, nil)
 	if err != nil {
-		return fmt.Errorf("failed inserting: %v, values: %v, stmt: %v error: %v", simplifiedType.Name, simplifiedInstance.Values, query, err)
-	}
-	return nil
-}
-
-// func (m *Client) UpdateSet(newInstance *SimplifiedInstance) error {
-// 	return m.Update(newInstance, nil)
-// }
-
-func (m *Client) UpdateInstance(newInstance *SimplifiedInstance, oldInstance *SimplifiedInstance) error {
-	idValue, err := newInstance.GetIdValue()
-	if err != nil {
-		return fmt.Errorf("failed updating, err: %v", err)
-	}
-	simplifiedType := newInstance.SimplifiedType
-	query, err := simplifiedType.UpdateStmt()
-	if err != nil {
-		return err
-	}
-	req := graphql.NewRequest(query)
-	req.Var("id", idValue)
-	set, err := newInstance.GetUpdateValues()
-	if err != nil {
-		return err
-	}
-	req.Var("set", set)
-	var remove map[string]interface{}
-	if oldInstance != nil {
-		remove = oldInstance.GetRemoveValues(newInstance)
-	} else {
-		remove = make(map[string]interface{})
-	}
-	req.Var("remove", remove)
-	// fmt.Println("remove: ", remove)
-	err = m.client.Run(context.Background(), req, nil)
-	if err != nil {
-		return fmt.Errorf("failed updating: %v, set values: %v, remove values: %v, stmt: %v error: %v", simplifiedType.Name, set, remove, query, err)
-	}
-	return nil
-}
-
-func (m *Client) Update(id interface{}, set, remove map[string]interface{}, simplifiedType *SimplifiedType) error {
-
-	query, err := simplifiedType.UpdateStmt()
-	if err != nil {
-		return err
-	}
-	req := graphql.NewRequest(query)
-	req.Var("id", id)
-	req.Var("set", set)
-	req.Var("remove", remove)
-	err = m.client.Run(context.Background(), req, nil)
-	if err != nil {
-		return fmt.Errorf("failed updating: %v, set values: %v, remove values: %v, stmt: %v error: %v", simplifiedType.Name, set, remove, query, err)
-	}
-	return nil
-}
-
-func (m *Client) Delete(simplifiedInstance *SimplifiedInstance) error {
-
-	idValue, err := simplifiedInstance.GetIdValue()
-	if err != nil {
-		return fmt.Errorf("failed deleting, err: %v", err)
-	}
-	simplifiedType := simplifiedInstance.SimplifiedType
-	query, err := simplifiedType.DeleteStmt()
-	if err != nil {
-		return err
-	}
-	req := graphql.NewRequest(query)
-	req.Var("id", idValue)
-	err = m.client.Run(context.Background(), req, nil)
-	if err != nil {
-		return fmt.Errorf("failed deleting: %v, id: %v, stmt: %v error: %v", simplifiedType.Name, idValue, query, err)
+		return fmt.Errorf("mutation failed, stmt: %v, mutations: %v, error: %v", stmt, mutations, err)
 	}
 	return nil
 }

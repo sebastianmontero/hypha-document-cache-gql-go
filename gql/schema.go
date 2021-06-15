@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	GQLType_ID     = "ID"
 	GQLType_Int64  = "Int64"
 	GQLType_Time   = "DateTime"
 	GQLType_String = "String"

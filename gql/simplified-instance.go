@@ -35,16 +35,48 @@ func (m *SimplifiedInstance) GetUpdateValues() (map[string]interface{}, error) {
 	return values, nil
 }
 
-func (m *SimplifiedInstance) GetRemoveValues(newInstance *SimplifiedInstance) map[string]interface{} {
+func (m *SimplifiedInstance) GetRemoveValues(oldInstance *SimplifiedInstance) map[string]interface{} {
 	remove := make(map[string]interface{})
-	for name, value := range m.Values {
-		if _, ok := newInstance.Values[name]; !ok {
-			if !m.SimplifiedType.Fields[name].IsEdge() {
+	for name, value := range oldInstance.Values {
+		if _, ok := m.Values[name]; !ok {
+			if !oldInstance.SimplifiedType.Fields[name].IsEdge() {
 				remove[name] = value
 			}
 		}
 	}
 	return remove
+}
+
+func (m *SimplifiedInstance) AddMutation(upsert bool) *Mutation {
+	return m.SimplifiedType.AddMutation(m.Values, upsert)
+}
+
+func (m *SimplifiedInstance) UpdateMutation(oldInstance *SimplifiedInstance) (*Mutation, error) {
+	idValue, err := m.GetIdValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed creating update mutation, err: %v", err)
+	}
+
+	set, err := m.GetUpdateValues()
+	if err != nil {
+		return nil, err
+	}
+	var remove map[string]interface{}
+	if oldInstance != nil {
+		remove = m.GetRemoveValues(oldInstance)
+	} else {
+		remove = make(map[string]interface{})
+	}
+
+	return m.SimplifiedType.UpdateMutation(idValue, set, remove)
+}
+
+func (m *SimplifiedInstance) DeleteMutation() (*Mutation, error) {
+	idValue, err := m.GetIdValue()
+	if err != nil {
+		return nil, fmt.Errorf("failed creating update mutation, err: %v", err)
+	}
+	return m.SimplifiedType.DeleteMutation(idValue)
 }
 
 func (m *SimplifiedInstance) String() string {

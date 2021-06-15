@@ -17,7 +17,7 @@ type SimplifiedField struct {
 
 func NewSimplifiedField(fieldDef *ast.FieldDefinition) (*SimplifiedField, error) {
 	field := &SimplifiedField{
-		IsID:    fieldDef.Directives.ForName("id") != nil,
+		IsID:    fieldDef.Directives.ForName("id") != nil || fieldDef.Type.NamedType == GQLType_ID,
 		Name:    fieldDef.Name,
 		NonNull: fieldDef.Type.NonNull,
 	}
@@ -50,7 +50,7 @@ func NewEdgeField(edgeName, edgeType string) *SimplifiedField {
 }
 
 func (m *SimplifiedField) IsObject() bool {
-	return m.Type != GQLType_Int64 && m.Type != GQLType_String && m.Type != GQLType_Time
+	return m.Type != GQLType_Int64 && m.Type != GQLType_String && m.Type != GQLType_Time && m.Type != GQLType_ID
 }
 
 func (m *SimplifiedField) IsEdge() bool {

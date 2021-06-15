@@ -124,16 +124,16 @@ func (m *SimplifiedType) GetStmt(projection []string) (string, string, error) {
 	}
 	stmt := fmt.Sprintf(
 		`
-			query(%v){
+			query($ids: [%v!]!){
 				%v(filter: { %v }){
 					%v
 					%v
 				}
 			}
 		`,
-		getIdsInputStmt(id),
+		id.Type,
 		queryName,
-		getIdsFilterStmt(id),
+		inFilterStmt(id.Name, "ids"),
 		docFields,
 		queryFieldsStmt(m.Fields, projection),
 	)
@@ -182,69 +182,138 @@ func (m *SimplifiedType) GetStmt(projection []string) (string, string, error) {
 // 	)
 // }
 
-func (m *SimplifiedType) AddStmt() string {
+func (m *SimplifiedType) AddMutation(values map[string]interface{}, upsert bool) *Mutation {
+	inputParamName := m.addInputParamNameStmt()
+	upsertParamName := m.upsertParamNameStmt()
+	return &Mutation{
+		ParamStmt: fmt.Sprintf(
+			"$%v: %v, $%v: Boolean",
+			inputParamName,
+			m.addInputParamTypeStmt(),
+			upsertParamName,
+		),
+		MutationStmt: fmt.Sprintf(
+			"add%v(input: $%v, upsert: $%v){numUids}",
+			m.Name,
+			inputParamName,
+			upsertParamName,
+		),
+		Params: map[string]interface{}{
+			inputParamName:  values,
+			upsertParamName: upsert,
+		},
+	}
+}
 
+func (m *SimplifiedType) addInputParamTypeStmt() string {
 	return fmt.Sprintf(
-		`
-			mutation($input: [Add%vInput!]!, $upsert: Boolean) {
-				add%v(input: $input, upsert: $upsert){numUids}
-			}
-		`,
-		m.Name,
+		"[Add%vInput!]!",
 		m.Name,
 	)
 }
 
-func (m *SimplifiedType) UpdateStmt() (string, error) {
-	id, err := m.GetIdField()
-	if err != nil {
-		return "", err
-	}
+func (m *SimplifiedType) addInputParamNameStmt() string {
+	return m.nameStmt("input")
+}
+
+func (m *SimplifiedType) upsertParamNameStmt() string {
+	return m.nameStmt("upsert")
+}
+
+func (m *SimplifiedType) nameStmt(param string) string {
 	return fmt.Sprintf(
-		`
-			mutation(%v, $set: %vPatch, $remove: %vPatch) {
-				update%v(input: { filter: { %v }, set: $set, remove: $remove }){numUids}
-			}
-		`,
-		getIdInputStmt(id),
+		"%v%v",
+		param,
 		m.Name,
-		m.Name,
-		m.Name,
-		getIdFilterStmt(id),
-	), nil
+	)
 }
 
-func (m *SimplifiedType) DeleteStmt() (string, error) {
-	id, err := m.GetIdField()
+func (m *SimplifiedType) UpdateMutation(id interface{}, set, remove map[string]interface{}) (*Mutation, error) {
+	idField, err := m.GetIdField()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
+	idParamName := m.idParamNameStmt()
+	setParamName := m.setParamNameStmt()
+	removeParamName := m.removeParamNameStmt()
+	patchParamType := m.patchParamTypeStmt()
+	return &Mutation{
+		ParamStmt: fmt.Sprintf(
+			"$%v: %v!, $%v: %v, $%v: %v",
+			idParamName,
+			idField.Type,
+			setParamName,
+			patchParamType,
+			removeParamName,
+			patchParamType,
+		),
+		MutationStmt: fmt.Sprintf(
+			"update%v(input: { filter: { %v }, set: $%v, remove: $%v }){numUids}",
+			m.Name,
+			eqFilterStmt(idField.Name, idParamName),
+			setParamName,
+			removeParamName,
+		),
+		Params: map[string]interface{}{
+			idParamName:     id,
+			setParamName:    set,
+			removeParamName: remove,
+		},
+	}, nil
+}
+
+func (m *SimplifiedType) DeleteMutation(id interface{}) (*Mutation, error) {
+	idField, err := m.GetIdField()
+	if err != nil {
+		return nil, err
+	}
+	idParamName := m.idParamNameStmt()
+	return &Mutation{
+		ParamStmt: fmt.Sprintf(
+			"$%v: %v!",
+			idParamName,
+			idField.Type,
+		),
+		MutationStmt: fmt.Sprintf(
+			"delete%v(filter: { %v }){numUids}",
+			m.Name,
+			eqFilterStmt(idField.Name, idParamName),
+		),
+		Params: map[string]interface{}{
+			idParamName: id,
+		},
+	}, nil
+}
+
+func (m *SimplifiedType) idParamNameStmt() string {
+	return m.nameStmt("id")
+}
+
+func (m *SimplifiedType) setParamNameStmt() string {
+	return m.nameStmt("set")
+}
+
+func (m *SimplifiedType) removeParamNameStmt() string {
+	return m.nameStmt("remove")
+}
+
+func (m *SimplifiedType) patchParamTypeStmt() string {
 	return fmt.Sprintf(
-		`
-			mutation(%v) {
-				delete%v(filter: { %v }){numUids}
-			}
-		`,
-		getIdInputStmt(id),
+		"%vPatch",
 		m.Name,
-		getIdFilterStmt(id),
-	), nil
+	)
 }
 
-func getIdInputStmt(id *SimplifiedField) string {
-	return fmt.Sprintf("$id: %v!", id.Type)
+func eqFilterStmt(field, param string) string {
+	return filterStmt(field, "eq", param)
 }
 
-func getIdsInputStmt(id *SimplifiedField) string {
-	return fmt.Sprintf("$ids: [%v!]!", id.Type)
+func inFilterStmt(field, param string) string {
+	return filterStmt(field, "in", param)
 }
 
-func getIdFilterStmt(id *SimplifiedField) string {
-	return fmt.Sprintf("%v: { eq: $id }", id.Name)
-}
-
-func getIdsFilterStmt(id *SimplifiedField) string {
-	return fmt.Sprintf("%v: { in: $ids }", id.Name)
+func filterStmt(field, op, param string) string {
+	return fmt.Sprintf("%v: { %v: $%v }", field, op, param)
 }
 
 func queryFieldsStmt(fields map[string]*SimplifiedField, projection []string) string {
