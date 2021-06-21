@@ -243,13 +243,13 @@ func TestOpCycle(t *testing.T) {
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
 		From: dhoHash,
-		To:   member1Hash + "1",
+		To:   member1Hash,
 	}, false, cursor)
 	assert.NilError(t, err)
 
 	expectedDhoType.SetField("member", &gql.SimplifiedField{
 		Name:    "member",
-		Type:    "Member",
+		Type:    "Document",
 		IsArray: true,
 		NonNull: false,
 	})
@@ -410,12 +410,6 @@ func TestOpCycle(t *testing.T) {
 	}, true, cursor)
 	assert.NilError(t, err)
 
-	expectedDhoType.SetField("member", &gql.SimplifiedField{
-		Name:    "member",
-		Type:    "Member",
-		IsArray: true,
-		NonNull: false,
-	})
 	expectedMemberEdge = []map[string]interface{}{
 		{"hash": member2Hash},
 	}
@@ -510,12 +504,6 @@ func TestOpCycle(t *testing.T) {
 	}, true, cursor)
 	assert.NilError(t, err)
 
-	expectedDhoType.SetField("member", &gql.SimplifiedField{
-		Name:    "member",
-		Type:    "Member",
-		IsArray: true,
-		NonNull: false,
-	})
 	expectedMemberEdge = []map[string]interface{}{}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)

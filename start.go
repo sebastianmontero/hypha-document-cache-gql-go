@@ -43,10 +43,10 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			if err != nil {
 				log.Panicf(err, "Error unmarshalling doc new data: %v", string(delta.NewData))
 			}
-			log.Tracef("Storing doc: ", chainDoc)
+			log.Tracef("Storing doc: %v ", chainDoc)
 			err = m.doccache.StoreDocument(chainDoc, cursor)
 			if err != nil {
-				log.Panicf(err, "Failed to store doc: %", chainDoc)
+				log.Panicf(err, "Failed to store doc: %v", chainDoc)
 			}
 			metrics.CreatedDocs.Inc()
 		case pbcodec.DBOp_OPERATION_REMOVE:
@@ -56,7 +56,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			}
 			err = m.doccache.DeleteDocument(chainDoc, cursor)
 			if err != nil {
-				log.Panicf(err, "Failed to delete doc: ", chainDoc)
+				log.Panicf(err, "Failed to delete doc: %v", chainDoc)
 			}
 			metrics.DeletedDocs.Inc()
 		}
@@ -76,7 +76,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			}
 			err := json.Unmarshal(deltaData, chainEdge)
 			if err != nil {
-				log.Panicf(err, "Error unmarshalling edge data: ", chainEdge)
+				log.Panicf(err, "Error unmarshalling edge data: %v", chainEdge)
 			}
 			err = m.doccache.MutateEdge(chainEdge, deleteOp, cursor)
 			if err != nil {
@@ -99,7 +99,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 func (m *deltaStreamHandler) OnHeartBeat(block *pbcodec.Block, cursor string) {
 	err := m.doccache.UpdateCursor(cursor)
 	if err != nil {
-		log.Panicf(err, "Failed to update cursor: ", cursor)
+		log.Panicf(err, "Failed to update cursor: %v", cursor)
 	}
 	metrics.BlockNumber.Set(float64(block.Number))
 }

@@ -280,12 +280,12 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 		return fmt.Errorf("FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
 	}
 
-	toInstance, ok := instances[chainEdge.To]
+	_, ok = instances[chainEdge.To]
 	if !ok {
 		return fmt.Errorf("TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
 	}
 	fromTypeName := fromInstance.GetValue("type").(string)
-	err = m.addSchemaEdge(fromTypeName, chainEdge.Name, toInstance.GetValue("type").(string))
+	err = m.addSchemaEdge(fromTypeName, chainEdge.Name, "Document")
 	if err != nil {
 		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
