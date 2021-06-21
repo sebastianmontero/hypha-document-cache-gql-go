@@ -53,6 +53,10 @@ func (m *SimplifiedField) IsObject() bool {
 	return m.Type != GQLType_Int64 && m.Type != GQLType_String && m.Type != GQLType_Time && m.Type != GQLType_ID
 }
 
+func (m *SimplifiedField) IsCoreEdge() bool {
+	return !m.IsArray && m.IsObject()
+}
+
 func (m *SimplifiedField) IsEdge() bool {
 	return m.IsArray && m.IsObject()
 }

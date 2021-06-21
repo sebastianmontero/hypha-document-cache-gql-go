@@ -10,7 +10,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func TestToSimplifiedInstance(t *testing.T) {
+func TestToParsedDoc(t *testing.T) {
 
 	createdDate := "2020-11-12T18:27:47.000"
 	chainDoc1 := &domain.ChainDocument{
@@ -78,10 +78,17 @@ func TestToSimplifiedInstance(t *testing.T) {
 						"2021-04-12T05:09:36.5",
 					},
 				},
+				{
+					Label: "period",
+					Value: []interface{}{
+						"checksum256",
+						"f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
+					},
+				},
 			},
 		},
 	}
-	simplifiedInstance, err := chainDoc1.ToSimplifiedInstance()
+	parsedDoc, err := chainDoc1.ToParsedDoc()
 	assert.NilError(t, err)
 
 	expectedSimplifiedInstance := &gql.SimplifiedInstance{
@@ -110,8 +117,13 @@ func TestToSimplifiedInstance(t *testing.T) {
 				},
 				"system_originalApprovedDate": {
 					Name:  "system_originalApprovedDate",
-					Type:  "String",
+					Type:  gql.GQLType_Time,
 					Index: "hour",
+				},
+				"system_period": {
+					Name:  "system_period",
+					Type:  "String",
+					Index: "exact",
 				},
 			},
 			ExtendsDocument: true,
@@ -120,15 +132,23 @@ func TestToSimplifiedInstance(t *testing.T) {
 			"hash":                         "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":                  "2020-11-12T18:27:47.000Z",
 			"creator":                      "dao.hypha",
-			"type":                         "dho",
+			"type":                         "Dho",
 			"details_rootNode":             "dao.hypha",
 			"details_role":                 "b7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 			"details_hvoiceSalaryPerPhase": "4133.04 HVOICE",
 			"details_timeShareX100":        int64(60),
 			"system_originalApprovedDate":  "2021-04-12T05:09:36.5Z",
+			"system_period":                "f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 		},
 	}
-	util.AssertSimplifiedInstance(t, simplifiedInstance, expectedSimplifiedInstance)
+
+	expectedParsedDoc := &domain.ParsedDoc{
+		Instance:       expectedSimplifiedInstance,
+		ChecksumFields: []string{"details_role", "system_period"},
+	}
+
+	assertParsedDoc(t, parsedDoc, expectedParsedDoc)
+
 	// certificationDate := "2020-11-12T20:27:47.000"
 	// chainDoc1.Certificates = []*domain.ChainCertificate{
 	// 	{
@@ -190,7 +210,7 @@ func TestToSimplifiedInstance(t *testing.T) {
 
 }
 
-func TestToSimplifiedInstanceShouldFailForNoContentGroupLabel(t *testing.T) {
+func TestToParsedDocShouldFailForNoContentGroupLabel(t *testing.T) {
 
 	createdDate := "2020-11-12T18:27:47.000"
 	chainDoc1 := &domain.ChainDocument{
@@ -217,12 +237,12 @@ func TestToSimplifiedInstanceShouldFailForNoContentGroupLabel(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToSimplifiedInstance()
+	_, err := chainDoc1.ToParsedDoc()
 	assert.ErrorContains(t, err, "content group: 0 for document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a content_group_label")
 
 }
 
-func TestToSimplifiedInstanceShouldFailForInvalidInt(t *testing.T) {
+func TestToParsedDocShouldFailForInvalidInt(t *testing.T) {
 
 	createdDate := "2020-11-12T18:27:47.000"
 	chainDoc1 := &domain.ChainDocument{
@@ -249,11 +269,11 @@ func TestToSimplifiedInstanceShouldFailForInvalidInt(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToSimplifiedInstance()
+	_, err := chainDoc1.ToParsedDoc()
 	assert.ErrorContains(t, err, "failed to parse content value to int64")
 }
 
-func TestToSimplifiedInstanceShouldFailForNoType(t *testing.T) {
+func TestToParsedDocShouldFailForNoType(t *testing.T) {
 
 	createdDate := "2020-11-12T18:27:47.000"
 	chainDoc1 := &domain.ChainDocument{
@@ -280,9 +300,10 @@ func TestToSimplifiedInstanceShouldFailForNoType(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToSimplifiedInstance()
+	_, err := chainDoc1.ToParsedDoc()
 	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
 }
+
 func TestChainDocUnmarshall(t *testing.T) {
 	chainDocJSON := `{"certificates":[],"content_groups":[[{"label":"content_group_label","value":["string","settings"]},{"label":"root_node","value":["string","52a7ff82bd6f53b31285e97d6806d886eefb650e79754784e9d923d3df347c91"]},{"label":"paused","value":["int64",0]},{"label":"updated_date","value":["time_point","2021-01-11T21:52:32"]},{"label":"seeds_token_contract","value":["name","token.seeds"]},{"label":"voting_duration_sec","value":["int64",3600]},{"label":"seeds_deferral_factor_x100","value":["int64",100]},{"label":"telos_decide_contract","value":["name","trailservice"]},{"label":"husd_token_contract","value":["name","husd.hypha"]},{"label":"hypha_token_contract","value":["name","token.hypha"]},{"label":"seeds_escrow_contract","value":["name","escrow.seeds"]},{"label":"publisher_contract","value":["name","publsh.hypha"]},{"label":"treasury_contract","value":["name","bank.hypha"]},{"label":"last_ballot_id","value":["name","hypha1....1cf"]},{"label":"hypha_deferral_factor_x100","value":["int64",25]},{"label":"client_version","value":["string","0.2.0 pre-release"]},{"label":"contract_version","value":["string","0.2.0 pre-release"]}],[{"label":"content_group_label","value":["string","system"]},{"label":"type","value":["name","settings"]},{"label":"node_label","value":["string","Settings"]}]],"contract":"dao.hypha","created_date":"2021-01-11T21:52:32","creator":"dao.hypha","hash":"3e06f9f93fb27ad04a2e97dfce9796c2d51b73721d6270e1c0ea6bf7e79c944b","id":4957}`
 	chainDoc := &domain.ChainDocument{}
@@ -290,4 +311,9 @@ func TestChainDocUnmarshall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unmarshalling failed: %v", err)
 	}
+}
+
+func assertParsedDoc(t *testing.T, actual, expected *domain.ParsedDoc) {
+	util.AssertSimplifiedInstance(t, actual.Instance, expected.Instance)
+	assert.DeepEqual(t, actual.ChecksumFields, expected.ChecksumFields)
 }

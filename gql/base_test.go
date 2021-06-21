@@ -25,18 +25,12 @@ func TestMain(m *testing.M) {
 }
 
 func beforeAll() {
-	if admin == nil {
-		admin = gql.NewAdmin("http://localhost:8080/admin")
-	}
-	if client == nil {
-		client = gql.NewClient("http://localhost:8080/graphql")
-	}
-	if dg == nil {
-		var err error
-		dg, err = dgraph.New("")
-		if err != nil {
-			log.Fatal(err, "Unable to create dgraph")
-		}
+	admin = gql.NewAdmin("http://localhost:8080/admin")
+	client = gql.NewClient("http://localhost:8080/graphql")
+	var err error
+	dg, err = dgraph.New("")
+	if err != nil {
+		log.Fatal(err, "Unable to create dgraph")
 	}
 }
 

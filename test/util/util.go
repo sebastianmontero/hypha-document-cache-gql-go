@@ -11,9 +11,44 @@ import (
 func AssertSimplifiedInstance(t *testing.T, actual, expected *gql.SimplifiedInstance) {
 	AssertSimplifiedType(t, actual.SimplifiedType, expected.SimplifiedType)
 	assert.Equal(t, len(actual.Values), len(expected.Values))
-	for name, value := range expected.Values {
-		assert.Equal(t, actual.Values[name], value)
+
+	for name := range expected.Values {
+		field := expected.SimplifiedType.GetField(name)
+		if field.IsEdge() {
+			AssertEdge(t, actual.GetValue(name), expected.GetValue(name))
+		} else if field.IsCoreEdge() {
+			AssertCoreEdge(t, actual.GetValue(name), expected.GetValue(name))
+		} else {
+			assert.DeepEqual(t, actual.GetValue(name), expected.GetValue(name))
+		}
 	}
+}
+
+func AssertEdge(t *testing.T, actual, expected interface{}) {
+	a := actual.([]interface{})
+	e := expected.([]map[string]interface{})
+	assert.Equal(t, len(a), len(e))
+	for _, expectedEdge := range e {
+		AssertContainsEdge(t, expectedEdge, a)
+	}
+}
+
+func AssertCoreEdge(t *testing.T, actual, expected interface{}) {
+	if expected == nil {
+		assert.Assert(t, actual == nil)
+	} else {
+		a := actual.(map[string]interface{})
+		e := expected.(map[string]interface{})
+		assert.Equal(t, a["hash"], e["hash"])
+	}
+}
+func AssertContainsEdge(t *testing.T, edge map[string]interface{}, edges []interface{}) {
+	for _, e := range edges {
+		if e.(map[string]interface{})["hash"] == edge["hash"] {
+			return
+		}
+	}
+	assert.Assert(t, false, fmt.Sprintf("edge: %v, not found", edge))
 }
 
 func AssertSimplifiedType(t *testing.T, actual, expected *gql.SimplifiedType) {
@@ -32,4 +67,5 @@ func AssertSimplifiedField(t *testing.T, actual, expected *gql.SimplifiedField) 
 	assert.Equal(t, actual.NonNull, expected.NonNull)
 	assert.Equal(t, actual.Index, expected.Index)
 	assert.Equal(t, actual.IsArray, expected.IsArray)
+	assert.Equal(t, actual.Type, expected.Type)
 }

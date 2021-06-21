@@ -57,11 +57,28 @@ func (m *SimplifiedType) GetIdField() (*SimplifiedField, error) {
 	return nil, fmt.Errorf("type: %v has no id field", m.Name)
 }
 
+func (m *SimplifiedType) GetCoreFields() []string {
+	coreFields := make([]string, 0)
+	for name, field := range m.Fields {
+		if !field.IsEdge() {
+			coreFields = append(coreFields, name)
+		}
+	}
+	return coreFields
+}
+
 func (m *SimplifiedType) GetField(name string) *SimplifiedField {
 	if field, ok := m.Fields[name]; ok {
 		return field
 	}
+	if m.ExtendsDocument {
+		return DocumentSimplifiedType.GetField(name)
+	}
 	return nil
+}
+
+func (m *SimplifiedType) SetField(name string, field *SimplifiedField) {
+	m.Fields[name] = field
 }
 
 func (m *SimplifiedType) PrepareUpdate(new *SimplifiedType) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
@@ -140,47 +157,6 @@ func (m *SimplifiedType) GetStmt(projection []string) (string, string, error) {
 
 	return queryName, stmt, nil
 }
-
-// func toMap(values []string) map[string]bool {
-// 	if values == nil {
-// 		return nil
-// 	}
-// 	m := make(map[string]bool, len(values))
-// 	for _, value := range values {
-// 		m[value] = true
-// 	}
-// 	return m
-// }
-
-// func (m *SimplifiedType) AddStmt() string {
-
-// 	docParams := ""
-// 	docInputs := ""
-// 	if m.ExtendsDocument {
-// 		docParams = inputParamsStmt(DocumentFieldArgs, false)
-// 		docInputs = inputFieldsStmt(DocumentFieldArgs, false)
-// 	}
-// 	return fmt.Sprintf(
-// 		`
-// 			mutation(
-// 				%v
-// 				%v
-// 			) {
-// 				add%v(input: [
-// 					{
-// 						%v
-// 						%v
-// 					}
-// 				]){numUids}
-// 			}
-// 		`,
-// 		docParams,
-// 		inputParamsStmt(m.Fields, true),
-// 		m.Name,
-// 		docInputs,
-// 		inputFieldsStmt(m.Fields, true),
-// 	)
-// }
 
 func (m *SimplifiedType) AddMutation(values map[string]interface{}, upsert bool) *Mutation {
 	inputParamName := m.addInputParamNameStmt()
@@ -331,14 +307,6 @@ func queryFieldsStmt(fields map[string]*SimplifiedField, projection []string) st
 	return join(filtered, queryFieldStmt, "\n", false)
 }
 
-// func inputFieldsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
-// 	return join(fields, inputFieldStmt, ",\n", trimEnd)
-// }
-
-// func inputParamsStmt(fields map[string]*SimplifiedField, trimEnd bool) string {
-// 	return join(fields, inputParamStmt, ",\n", trimEnd)
-// }
-
 func queryFieldStmt(field *SimplifiedField) string {
 	if field.IsObject() {
 		return fmt.Sprintf("%v{hash}", field.Name)
@@ -347,18 +315,6 @@ func queryFieldStmt(field *SimplifiedField) string {
 	}
 
 }
-
-// func inputFieldStmt(field *SimplifiedField) string {
-// 	return fmt.Sprintf("%v: $%v", field.Name, field.Name)
-// }
-
-// func inputParamStmt(field *SimplifiedField) string {
-// 	nonNull := ""
-// 	if field.NonNull {
-// 		nonNull = "!"
-// 	}
-// 	return fmt.Sprintf("$%v: %v%v", field.Name, field.Type, nonNull)
-// }
 
 func join(fields map[string]*SimplifiedField, fn toFieldStmt, separator string, trimEnd bool) string {
 	q := &strings.Builder{}

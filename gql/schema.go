@@ -16,6 +16,14 @@ const (
 	GQLType_String = "String"
 )
 
+type SchemaUpdateOp string
+
+const (
+	SchemaUpdateOp_None    SchemaUpdateOp = "None"
+	SchemaUpdateOp_Created SchemaUpdateOp = "Created"
+	SchemaUpdateOp_Updated SchemaUpdateOp = "Updated"
+)
+
 type Schema struct {
 	Schema          *ast.Schema
 	SimplifiedTypes map[string]*SimplifiedType
@@ -75,23 +83,23 @@ func (m *Schema) GetType(name string) *ast.Definition {
 	return nil
 }
 
-func (m *Schema) UpdateType(newType *SimplifiedType) (bool, error) {
+func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 	oldType, err := m.GetSimplifiedType(newType.Name)
 	if err != nil {
-		return false, err
+		return SchemaUpdateOp_None, err
 	}
 	// fmt.Println("OldType: ", oldType)
 	if oldType == nil {
 		m.Schema.Types[newType.Name] = CreateType(newType)
 		m.SimplifiedTypes[newType.Name] = newType.Clone()
-		return true, nil
+		return SchemaUpdateOp_Created, nil
 	}
 	toAdd, toUpdate, err := oldType.PrepareUpdate(newType)
 	if err != nil {
-		return false, err
+		return SchemaUpdateOp_None, err
 	}
 	if len(toAdd) == 0 && len(toUpdate) == 0 {
-		return false, nil
+		return SchemaUpdateOp_None, nil
 	}
 	fieldDefs := &m.GetType(newType.Name).Fields
 	for _, field := range toUpdate {
@@ -106,7 +114,7 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (bool, error) {
 	// m.SimplifiedTypes[newType.Name] = newType
 	// fmt.Println("toAdd: ", toAdd)
 	// fmt.Println("toUpdate: ", toUpdate)
-	return true, nil
+	return SchemaUpdateOp_Updated, nil
 }
 
 func (m *Schema) AddEdge(typeName, edgeName, edgeType string) (bool, error) {

@@ -40,9 +40,9 @@ func TestAdd(t *testing.T) {
 			"votes":       20,
 		},
 	}
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -85,9 +85,9 @@ func TestAdd(t *testing.T) {
 			},
 		},
 	}
-	changed, err = schema.UpdateType(personType)
+	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -135,9 +135,9 @@ func TestUpdate(t *testing.T) {
 			"votes":       20,
 		},
 	}
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -204,9 +204,9 @@ func TestUpdate(t *testing.T) {
 			"periods":     11,
 		},
 	}
-	changed, err = schema.UpdateType(assignmentType)
+	updateOp, err = schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -285,13 +285,13 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		Values:         allPersonValues,
 	}
 
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 
-	changed, err = schema.UpdateType(personType)
+	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -308,9 +308,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	setPersonValues := map[string]interface{}{
 		"assignments": []map[string]interface{}{assignmentRef},
 	}
-	changed, err = schema.UpdateType(personType)
+	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -470,9 +470,9 @@ func TestDelete(t *testing.T) {
 			"votes":       20,
 		},
 	}
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -529,9 +529,9 @@ func TestMultipleMutations(t *testing.T) {
 			"votes":       20,
 		},
 	}
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)

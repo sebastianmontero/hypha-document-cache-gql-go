@@ -73,9 +73,9 @@ func TestUpdateSchema(t *testing.T) {
 		},
 		ExtendsDocument: true,
 	}
-	changed, err := schema.UpdateType(assignmentType)
+	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	err = admin.UpdateSchema(schema)
@@ -87,13 +87,13 @@ func TestUpdateSchema(t *testing.T) {
 	assertType(t, assignmentType, currentSchema)
 	// fmt.Println("Schema: ", currentSchema.String())
 	// *** There shouldn't be any changes for updating schema with the same type
-	changed, err = schema.UpdateType(assignmentType)
+	updateOp, err = schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, false)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_None)
 
-	changed, err = currentSchema.UpdateType(assignmentType)
+	updateOp, err = currentSchema.UpdateType(assignmentType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, false)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_None)
 
 	//***Add Type programatically with id***
 	badgeType := &gql.SimplifiedType{
@@ -109,9 +109,9 @@ func TestUpdateSchema(t *testing.T) {
 		},
 		ExtendsDocument: false,
 	}
-	changed, err = schema.UpdateType(badgeType)
+	updateOp, err = schema.UpdateType(badgeType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
 	// fmt.Println("Schema: ", schema.String())
 
 	// for i := 0; i < 2000; i++ {
@@ -132,9 +132,9 @@ func TestUpdateSchema(t *testing.T) {
 	// 		},
 	// 		ExtendsDocument: true,
 	// 	}
-	// 	changed, err = schema.UpdateType(tType)
+	// 	updateOp, err = schema.UpdateType(tType)
 	// 	assert.NilError(t, err)
-	// 	assert.Equal(t, changed, true)
+	// 	assert.Equal(t, updateOp, true)
 	// }
 
 	err = admin.UpdateSchema(schema)
@@ -189,10 +189,10 @@ func TestUpdateType(t *testing.T) {
 		ExtendsDocument: false,
 	}
 
-	// ***Adding Document interface
-	changed, err := schema.UpdateType(personType)
+	// ***Adding age field
+	updateOp, err := schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)
 	currentSchema, err = admin.GetCurrentSchema()
@@ -201,17 +201,17 @@ func TestUpdateType(t *testing.T) {
 	assertType(t, personType, currentSchema)
 	// fmt.Println("Schema: ", currentSchema)
 	// ***Shouldn't change for same type
-	changed, err = currentSchema.UpdateType(personType)
+	updateOp, err = currentSchema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, false)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_None)
 
 	//***Removing field
 	removedField := personType.Fields["picks"]
 	delete(personType.Fields, "picks")
 	// fmt.Println("Person: ", personType)
-	changed, err = schema.UpdateType(personType)
+	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, false)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_None)
 
 	//***Adding field
 	personType.Fields["hobbie"] = &gql.SimplifiedField{
@@ -220,9 +220,9 @@ func TestUpdateType(t *testing.T) {
 		NonNull: false,
 	}
 	// fmt.Println("Person: ", personType)
-	changed, err = schema.UpdateType(personType)
+	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
-	assert.Equal(t, changed, true)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
 
 	err = admin.UpdateSchema(schema)
 	assert.NilError(t, err)

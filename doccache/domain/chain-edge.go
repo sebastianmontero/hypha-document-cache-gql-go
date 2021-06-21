@@ -20,6 +20,12 @@ type ChainEdge struct {
 // 	return nil
 // }
 
+func (m *ChainEdge) GetEdgeRef() map[string]interface{} {
+	return map[string]interface{}{
+		m.Name: []map[string]interface{}{{"hash": m.To}},
+	}
+}
+
 func (m *ChainEdge) String() string {
 	return fmt.Sprintf("ChainEdge{Name: %v, From: %v, To: %v}", m.Name, m.From, m.To)
 }

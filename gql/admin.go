@@ -36,8 +36,12 @@ func (m *Admin) GetCurrentSchema() (*Schema, error) {
 	if gqlSchema == nil {
 		return nil, nil
 	}
+	schema := gqlSchema.(map[string]interface{})["schema"].(string)
+	if schema == "" {
+		return nil, nil
+	}
 	// fmt.Println("Response: ", gqlSchema.(map[string]interface{})["schema"].(string))
-	return LoadSchema(gqlSchema.(map[string]interface{})["schema"].(string))
+	return LoadSchema(schema)
 }
 
 func (m *Admin) UpdateSchema(schema *Schema) error {
@@ -61,10 +65,11 @@ func (m *Admin) UpdateSchema(schema *Schema) error {
 		return fmt.Errorf("failed updating schema, error: %v", err)
 	}
 
-	// health, err := m.Health()
-	// if err != nil {
-	// 	return err
-	// }
+	//Wait for schema to update
+	_, err = m.GetCurrentSchema()
+	if err != nil {
+		return fmt.Errorf("failed updating schema, error getting updated schema: %v", err)
+	}
 	// fmt.Println("Health: ", health)
 
 	return nil

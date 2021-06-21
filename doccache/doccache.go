@@ -2,123 +2,35 @@ package doccache
 
 import (
 	"fmt"
-	"strings"
 
-	"github.com/dgraph-io/dgo/v2/protos/api"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
-const schema = `
-      type Document {
-          hash
-          created_date
-          creator
-          content_groups
-          certificates
-      }
-      
-      type ContentGroup {
-        content_group_sequence
-        contents
-      }
-      
-      type Content {
-        label
-        value
-        type
-        content_sequence
-        document
-				time_value
-				int_value
-      }
-      
-      type Certificate {
-        certifier
-        notes
-        certification_date
-        certification_sequence
-      }
-
-			type Cursor {
-				cursor
-			}
-      
-      hash: string @index(exact) .
-      created_date: datetime @index(hour) .
-      creator: string @index(term) .
-      content_groups: [uid] .
-      certificates: [uid] .
-      
-      content_group_sequence: int .
-      contents: [uid] .
-      
-      label: string @index(term) .
-      value: string @index(term) .
-      type: string @index(term) .
-      content_sequence: int .
-      document: [uid] .
-			time_value: datetime @index(hour) .
-			int_value: int @index(int) .
-      
-      certifier: string @index(term) .
-      notes: string .
-      certification_date: datetime @index(hour) .
-      certification_sequence: int .
-
-			cursor: string @index(term) .
-    `
-const contentGroupsRequest = `
-      content_groups (orderasc:content_group_sequence){
-				content_group_sequence
-				dgraph.type
-        contents (orderasc: content_sequence){
-          content_sequence
-          label
-          value
-					type
-					time_value
-					int_value
-					dgraph.type
-          document{
-            expand(_all_)
-          }
-        }
-      },
-    `
-
-const certificatesRequest = `
-      certificates (orderasc: certification_sequence){
-				uid
-				dgraph.type
-        expand(_all_)
-      },
-		`
+const CoreEdgeSuffix = "edge"
+const CursorId string = "c1"
 
 var log *slog.Log
 
-//RequestConfig enables query configuration
-type RequestConfig struct {
-	ContentGroups bool
-	Certificates  bool
-	Edges         []string
-}
-
 //Doccache Service class to store and retrieve docs
 type Doccache struct {
-	dgraph           *dgraph.Dgraph
-	documentFieldMap map[string]*dgraph.SchemaField
-	Cursor           *domain.Cursor
+	dgraph *dgraph.Dgraph
+	admin  *gql.Admin
+	client *gql.Client
+	Cursor *gql.SimplifiedInstance
+	Schema *gql.Schema
 }
 
 //New creates a new doccache
-func New(dg *dgraph.Dgraph, logConfig *slog.Config) (*Doccache, error) {
+func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, logConfig *slog.Config) (*Doccache, error) {
 	log = slog.New(logConfig, "doccache")
 
 	m := &Doccache{
-		dgraph:           dg,
-		documentFieldMap: make(map[string]*dgraph.SchemaField),
+		dgraph: dg,
+		admin:  admin,
+		client: client,
 	}
 
 	err := m.PrepareSchema()
@@ -144,314 +56,258 @@ func (m *Doccache) SchemaExists() (bool, error) {
 
 //PrepareSchema prepares the base schema
 func (m *Doccache) PrepareSchema() error {
-	exists, err := m.SchemaExists()
+	log.Infof("Getting current schema...")
+	schema, err := m.admin.GetCurrentSchema()
+	fmt.Println("Current schema: ", schema)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed getting current schema, error: %v", err)
 	}
-	if !exists {
-		err = m.dgraph.UpdateSchema(schema)
+	if schema == nil {
+		log.Infof("No current schema, initializing schema...")
+		schema, err = gql.InitialSchema()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed getting initial schema, error: %v", err)
 		}
+		err = m.admin.UpdateSchema(schema)
+		if err != nil {
+			return fmt.Errorf("failed setting initial schema, error: %v", err)
+		}
+		log.Infof("Initialized schema.")
 	}
-	m.documentFieldMap, err = m.dgraph.GetTypeFieldMap("Document")
-	return err
+	m.Schema = schema
+	return nil
 }
 
 //GetCursor Finds the current cursor
-func (m *Doccache) getCursor() (*domain.Cursor, error) {
-	query := `
-		{
-			cursors(func: type(Cursor)){
-				uid
-				cursor
-				dgraph.type
-			}
-		}
-	`
-	cursors := &domain.Cursors{}
-	err := m.dgraph.Query(query, nil, cursors)
-	if err != nil {
-		return nil, err
-	}
-	if len(cursors.Cursors) > 0 {
-		return cursors.Cursors[0], nil
-	}
+func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 
-	return m.createCursor()
-}
-
-func (m *Doccache) createCursor() (*domain.Cursor, error) {
-	cursor := &domain.Cursor{
-		DType: []string{"Cursor"},
-	}
-	mutation, err := m.cursorMutation(cursor)
+	cursor, err := m.client.GetOne(CursorId, gql.CursorSimplifiedType, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed getting cursor with id: %v, err: %v", CursorId, err)
 	}
-	resp, err := m.dgraph.MutateOne(mutation)
-	if err != nil {
-		return nil, err
-	}
-	for _, uid := range resp.GetUids() {
-		cursor.UID = uid
+	if cursor == nil {
+		cursor = gql.NewCursorInstance(CursorId, "")
 	}
 	return cursor, nil
 }
 
-func (m *Doccache) cursorMutation(cursor *domain.Cursor) (*api.Mutation, error) {
-	return m.dgraph.JSONMutation(cursor, false)
-}
-
-//GetByHash Finds document by hash
-func (m *Doccache) GetByHash(hash string, rc *RequestConfig) (*domain.Document, error) {
-	query := fmt.Sprintf(`
-		query docs($hash: string){
-			docs(func: eq(hash, $hash))
-				%v
-		}
-	`, configureRequest(rc))
-
-	docs := &domain.Docs{}
-	err := m.dgraph.Query(query, map[string]string{"$hash": hash}, docs)
-	if err != nil {
-		return nil, err
-	}
-	if len(docs.Docs) > 0 {
-		return docs.Docs[0], nil
-	}
-	return nil, nil
-}
-
-//GetByHashAsMap Finds document by hash returns a map
-func (m *Doccache) GetByHashAsMap(hash string, rc *RequestConfig) (map[string]interface{}, error) {
-	query := fmt.Sprintf(`
-		query docs($hash: string){
-			docs(func: eq(hash, $hash))
-				%v
-		}
-	`, configureRequest(rc))
-
-	documents := make(map[string]interface{})
-	err := m.dgraph.Query(query, map[string]string{"$hash": hash}, &documents)
-	if err != nil {
-		return nil, err
-	}
-	if docsi, ok := documents["docs"]; ok {
-		docs := docsi.([]interface{})
-		if len(docs) > 0 {
-			return docs[0].(map[string]interface{}), nil
-		}
-		return nil, nil
-	}
-	return nil, nil
-}
-
-//GetHashUIDMap finds docs by hashes and returns a map hash->uid
-func (m *Doccache) GetHashUIDMap(hashes []string) (map[string]string, error) {
-	if len(hashes) == 0 {
-		return make(map[string]string), nil
-	}
-	query := fmt.Sprintf(`
-		{
-			docs(func: eq(hash, [%v])){
-				uid
-				hash
-			}
-		}
-	`, strings.Join(hashes, ","))
-
-	docs := &domain.Docs{}
-	err := m.dgraph.Query(query, nil, docs)
-	if err != nil {
-		return nil, err
-	}
-	var hashUIDMap = make(map[string]string, len(hashes))
-
-	for _, doc := range docs.Docs {
-		hashUIDMap[doc.Hash] = doc.UID
-	}
-	return hashUIDMap, nil
-}
-
-//GetUID finds UID from hash
-func (m *Doccache) GetUID(hash string) (string, error) {
-	hashUIDMap, err := m.GetHashUIDMap([]string{hash})
-	if err != nil {
-		return "", err
-	}
-	if uid, ok := hashUIDMap[hash]; ok {
-		return uid, nil
-	}
-	return "", nil
-}
-
-func (m *Doccache) mutate(mutation *api.Mutation, cursor string) error {
-	m.Cursor.Cursor = cursor
-	cursorMutation, err := m.cursorMutation(m.Cursor)
-	if err != nil {
-		return err
-	}
-	_, err = m.dgraph.Mutate(mutation, cursorMutation)
-	return err
+func (m *Doccache) mutate(mutation *gql.Mutation, cursor string) error {
+	m.Cursor.SetValue("cursor", cursor)
+	cursorMutation := m.Cursor.AddMutation(true)
+	return m.client.Mutate(mutation, cursorMutation)
 }
 
 func (m *Doccache) UpdateCursor(cursor string) error {
-	m.Cursor.Cursor = cursor
-	cursorMutation, err := m.cursorMutation(m.Cursor)
+	m.Cursor.Values["cursor"] = cursor
+	err := m.client.Mutate(m.Cursor.AddMutation(true))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to update cursor, value: %v, error: %v", cursor, err)
 	}
-	_, err = m.dgraph.Mutate(cursorMutation)
-	return err
+	return nil
+}
+
+func (m *Doccache) updateSchemaType(simplifiedType *gql.SimplifiedType) (gql.SchemaUpdateOp, error) {
+	updateOp, err := m.Schema.UpdateType(simplifiedType)
+	if err != nil {
+		return gql.SchemaUpdateOp_None, fmt.Errorf("failed updating local schema, error: %v", err)
+	}
+	if updateOp != gql.SchemaUpdateOp_None {
+		err := m.admin.UpdateSchema(m.Schema)
+		if err != nil {
+			return gql.SchemaUpdateOp_None, fmt.Errorf("failed updating remote schema, error: %v", err)
+		}
+	}
+	return updateOp, nil
+}
+
+func (m *Doccache) addSchemaEdge(typeName, edgeName, edgeType string) error {
+	added, err := m.Schema.AddEdge(typeName, edgeName, edgeType)
+	if err != nil {
+		return fmt.Errorf("failed updating local schema, error: %v", err)
+	}
+	if added {
+		err := m.admin.UpdateSchema(m.Schema)
+		if err != nil {
+			return fmt.Errorf("failed updating remote schema, error: %v", err)
+		}
+	}
+	return nil
+}
+
+func (m *Doccache) GetInstance(hash interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
+	return m.client.GetOne(hash, simplifiedType, projection)
+}
+
+func (m *Doccache) GetInstances(hashes []interface{}, simplifiedType *gql.SimplifiedType, projection []string) (map[interface{}]*gql.SimplifiedInstance, error) {
+	return m.client.Get(hashes, simplifiedType, projection)
 }
 
 //StoreDocument Creates a new document or updates its certificates
 func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	doc, err := m.GetByHash(chainDoc.Hash, &RequestConfig{Certificates: true})
+	parsedDoc, err := chainDoc.ToParsedDoc()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to store document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
 	}
-	if doc == nil {
-		log.Infof("Creating document: %v", chainDoc.Hash)
-		doc, err = m.transformNew(chainDoc)
+	instance := parsedDoc.Instance
+	currentSimplifiedType, err := m.Schema.GetSimplifiedType(instance.SimplifiedType.Name)
+	if err != nil {
+		return fmt.Errorf("failed to store document with hash: %v of type: %v, error getting simplified type from schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+	}
+	err = m.AddCoreEdges(parsedDoc, currentSimplifiedType)
+	if err != nil {
+		return fmt.Errorf("failed to store document with hash: %v of type: %v, error adding core edges: %v", chainDoc.Hash, instance.GetValue("type"), err)
+	}
+	updateOp, err := m.updateSchemaType(instance.SimplifiedType)
+	if err != nil {
+		return fmt.Errorf("failed to store document with hash: %v of type: %v, error updating schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+	}
+	var oldInstance *gql.SimplifiedInstance
+	if updateOp != gql.SchemaUpdateOp_Created {
+		oldInstance, err = m.GetInstance(instance.GetValue("hash"), currentSimplifiedType, currentSimplifiedType.GetCoreFields())
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to store document with hash: %v of type: %v, error fetching old instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
 		}
-	} else {
-		log.Infof("Updating certificates for document: <%v>%v", doc.UID, doc.Hash)
-		doc.UpdateCertificates(chainDoc.Certificates)
 	}
 
-	mutation, err := m.dgraph.JSONMutation(doc, false)
-	if err != nil {
-		return err
+	if oldInstance == nil {
+		log.Infof("Creating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		err = m.mutate(instance.AddMutation(false), cursor)
+		if err != nil {
+			return fmt.Errorf("failed to create document with hash: %v of type: %v, error inserting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		}
+	} else {
+		//TODO: handle certificates
+		log.Infof("Updating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		mutation, err := instance.UpdateMutation(oldInstance)
+		if err != nil {
+			return fmt.Errorf("failed to update document with hash: %v of type: %v, error generating update mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		}
+		err = m.mutate(mutation, cursor)
+		if err != nil {
+			return fmt.Errorf("failed to update document with hash: %v of type: %v, error updating instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		}
 	}
-	return m.mutate(mutation, cursor)
+
+	return nil
+}
+
+func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc, currentType *gql.SimplifiedType) error {
+	newInstance := parsedDoc.Instance
+	newType := newInstance.SimplifiedType
+	var missingFields []string
+	if currentType == nil {
+		missingFields = parsedDoc.ChecksumFields
+	} else {
+		for _, checksumField := range parsedDoc.ChecksumFields {
+			coreEdgeFieldName := GetCoreEdgeName(checksumField)
+			field := currentType.GetField(coreEdgeFieldName)
+			if field != nil {
+				newType.SetField(coreEdgeFieldName, field)
+				newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(newInstance.GetValue(checksumField)))
+			} else {
+				missingFields = append(missingFields, checksumField)
+			}
+		}
+	}
+
+	if len(missingFields) == 0 {
+		return nil
+	}
+	missingChecksums := make([]interface{}, 0, len(missingFields))
+	for _, missingField := range missingFields {
+		missingChecksums = append(missingChecksums, newInstance.GetValue(missingField))
+	}
+	instances, err := m.client.Get(missingChecksums, gql.DocumentSimplifiedType, nil)
+	if err != nil {
+		return fmt.Errorf("failed getting core edge documents, for document: %v of type: %v, error: %v", newInstance.GetValue("hash"), newInstance.GetValue("type"), err)
+	}
+	for _, field := range missingFields {
+		hash := newInstance.GetValue(field)
+		instance := instances[hash]
+		if instance == nil {
+			return fmt.Errorf("core edge with hash: %v not found", hash)
+		}
+		coreEdgeFieldName := GetCoreEdgeName(field)
+		newType.SetField(coreEdgeFieldName, &gql.SimplifiedField{
+			Name: coreEdgeFieldName,
+			Type: instance.GetValue("type").(string),
+		})
+		newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("hash")))
+	}
+	return nil
+}
+
+func GetCoreEdgeName(checksumFieldName string) string {
+	return fmt.Sprintf("%v_%v", checksumFieldName, CoreEdgeSuffix)
+}
+
+func GetEdgeValue(hash interface{}) map[string]interface{} {
+	return map[string]interface{}{"hash": hash}
 }
 
 //DeleteDocument Deletes a document
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	uid, err := m.GetUID(chainDoc.Hash)
+	parsedDoc, err := chainDoc.ToParsedDoc()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to delete document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
 	}
-	if uid != "" {
-		log.Infof("Deleting Node: <%v>%v", uid, chainDoc.Hash)
-		mutation := m.dgraph.DeleteNodeMutation(uid)
-		return m.mutate(mutation, cursor)
+	instance := parsedDoc.Instance
+	log.Infof("Deleting Node: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+	mutation, err := instance.DeleteMutation()
+	if err != nil {
+		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error creating delete mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
 	}
-	log.Infof("Document: %v not found, couldn't delete", chainDoc.Hash)
+	err = m.mutate(mutation, cursor)
+	if err != nil {
+		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error deleting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+	}
 	return nil
 }
 
 //MutateEdge Creates/Deletes an edge
 func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor string) error {
-	err := m.updateDocumentTypeSchema(chainEdge.Name)
+	instances, err := m.GetInstances(
+		[]interface{}{chainEdge.From, chainEdge.To},
+		gql.DocumentSimplifiedType,
+		nil,
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting instances, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
-	hashUIDMap, err := m.GetHashUIDMap([]string{chainEdge.From, chainEdge.To})
+
+	fromInstance, ok := instances[chainEdge.From]
+	if !ok {
+		return fmt.Errorf("FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+	}
+
+	toInstance, ok := instances[chainEdge.To]
+	if !ok {
+		return fmt.Errorf("TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+	}
+	fromTypeName := fromInstance.GetValue("type").(string)
+	err = m.addSchemaEdge(fromTypeName, chainEdge.Name, toInstance.GetValue("type").(string))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
-	fromUID, ok := hashUIDMap[chainEdge.From]
-	if !ok {
-		return fmt.Errorf("from node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-	}
-	toUID, ok := hashUIDMap[chainEdge.To]
-	if !ok {
-		return fmt.Errorf("to node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-	}
-	log.Infof("Mutating [Edge: %v, From: <%v>%v, To: <%v>%v] Delete Op: %v", chainEdge.Name, fromUID, chainEdge.From, toUID, chainEdge.To, deleteOp)
-	mutation := m.dgraph.EdgeMutation(fromUID, toUID, chainEdge.Name, deleteOp)
-	return m.mutate(mutation, cursor)
 
-}
-
-func (m *Doccache) updateDocumentTypeSchema(newField string) error {
-	if _, ok := m.documentFieldMap[newField]; !ok {
-		fields := ""
-		for key := range m.documentFieldMap {
-			fields += "\n" + key
-		}
-		err := m.dgraph.UpdateSchema(fmt.Sprintf(
-			`
-				%v: [uid] .
-				type Document{
-					%v
-					%v
-				}
-		 `, newField, fields, newField))
-		if err != nil {
-			return err
-		}
-		m.documentFieldMap[newField] = &dgraph.SchemaField{Name: newField}
+	fromType, err := m.Schema.GetSimplifiedType(fromTypeName)
+	if err != nil {
+		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting type: %v, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, fromInstance.SimplifiedType.Name, err)
+	}
+	var set, remove map[string]interface{}
+	if deleteOp {
+		remove = chainEdge.GetEdgeRef()
+	} else {
+		set = chainEdge.GetEdgeRef()
+	}
+	mutation, err := fromType.UpdateMutation(chainEdge.From, set, remove)
+	if err != nil {
+		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed creating edge mutation, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+	}
+	log.Infof("Mutating [Edge: %v, From: %v, To: %v] Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+	err = m.mutate(mutation, cursor)
+	if err != nil {
+		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed storing edge, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 	return nil
-}
-
-func (m *Doccache) transformNew(chainDoc *domain.ChainDocument) (*domain.Document, error) {
-	doc, err := domain.NewDocument(chainDoc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse chain doc: %v \n error: %v", chainDoc, err)
-	}
-	checksumContents := doc.GetChecksumContents()
-	hashes := make([]string, 0, len(checksumContents))
-	for _, checksumContent := range checksumContents {
-		hashes = append(hashes, checksumContent.Value)
-	}
-	hashUIDMap, err := m.GetHashUIDMap(hashes)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, checksumContent := range checksumContents {
-		if uid, ok := hashUIDMap[checksumContent.Value]; ok {
-			checksumContent.Document = []*domain.Document{
-				{
-					UID: uid,
-				},
-			}
-		} else {
-			log.Infof("Document with hash: %v not found, referenced from document: %v", checksumContent.Value, chainDoc.Hash)
-		}
-	}
-	return doc, nil
-}
-
-func configureRequest(rc *RequestConfig) string {
-	contentGroups, certificates := "", ""
-	if rc.ContentGroups {
-		contentGroups = contentGroupsRequest
-	}
-	if rc.Certificates {
-		certificates = certificatesRequest
-	}
-	predicates := fmt.Sprintf(`
-		uid
-		hash
-		creator
-		created_date
-		dgraph.type
-		%v
-		%v
-	`, contentGroups, certificates)
-
-	edgeRequest := ""
-
-	for _, edge := range rc.Edges {
-		edgeRequest += fmt.Sprintf(`
-			%v {
-				%v
-			}
-		`, edge, predicates)
-	}
-	return fmt.Sprintf(`
-		{
-			%v,
-			%v
-		}
-	`, predicates, edgeRequest)
 }

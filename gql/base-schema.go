@@ -64,6 +64,11 @@ const BaseSchema = `
 	
 `
 
+var DocumentSimplifiedType = &SimplifiedType{
+	Name:   "Document",
+	Fields: DocumentFieldArgs,
+}
+
 var CursorSimplifiedType = &SimplifiedType{
 	Name: "Cursor",
 	Fields: map[string]*SimplifiedField{

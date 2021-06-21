@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/dfuse-io/bstream"
 	pbcodec "github.com/dfuse-io/dfuse-eosio/pb/dfuse/eosio/codec/v1"
@@ -12,9 +13,11 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sebastianmontero/dfuse-firehose-client/dfclient"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
-	"github.com/sebastianmontero/hypha-document-cache-go/doccache"
-	"github.com/sebastianmontero/hypha-document-cache-go/monitoring"
-	"github.com/sebastianmontero/hypha-document-cache-go/monitoring/metrics"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring/metrics"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
@@ -33,7 +36,7 @@ type deltaStreamHandler struct {
 func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
 	log.Debugf("On Delta: \nCursor: %v \nFork Step: %v \nDelta %v ", cursor, forkStep, delta)
 	if delta.TableName == docTable {
-		chainDoc := &doccache.ChainDocument{}
+		chainDoc := &domain.ChainDocument{}
 		switch delta.Operation {
 		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_UPDATE:
 			err := json.Unmarshal(delta.NewData, chainDoc)
@@ -64,7 +67,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 				deltaData []byte
 				deleteOp  bool
 			)
-			chainEdge := &doccache.ChainEdge{}
+			chainEdge := &domain.ChainEdge{}
 			if delta.Operation == pbcodec.DBOp_OPERATION_INSERT {
 				deltaData = delta.NewData
 			} else {
@@ -77,7 +80,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			}
 			err = m.doccache.MutateEdge(chainEdge, deleteOp, cursor)
 			if err != nil {
-				log.Errorf(err, "Failed to mutate doc, deleteOp: %v, edge: %v", deleteOp, chainEdge)
+				log.Panicf(err, "Failed to mutate doc, deleteOp: %v, edge: %v", deleteOp, chainEdge)
 			}
 			if deleteOp {
 				metrics.DeletedEdges.Inc()
@@ -114,7 +117,8 @@ func main() {
 	firehoseEndpoint := os.Getenv("FIREHOSE_ENDPOINT")
 	dfuseAPIKey := os.Getenv("DFUSE_API_KEY")
 	eosEndpoint := os.Getenv("EOS_ENDPOINT")
-	dgraphEndpoint := fmt.Sprintf("%v:%v", os.Getenv("DGRAPH_ALPHA_HOST"), os.Getenv("DGRAPH_ALPHA_EXTERNAL_PORT"))
+	dgraphGRPCEndpoint := fmt.Sprintf("%v:%v", os.Getenv("DGRAPH_ALPHA_HOST"), os.Getenv("DGRAPH_ALPHA_EXTERNAL_PORT"))
+	dgraphURL := fmt.Sprintf("http://%v:%v", os.Getenv("DGRAPH_ALPHA_HOST"), os.Getenv("DGRAPH_ALPHA_HTTP_PORT"))
 
 	startBlock, err := strconv.ParseInt(os.Getenv("START_BLOCK"), 10, 64)
 	if err != nil {
@@ -138,7 +142,8 @@ func main() {
 		 edgeTable: %v
 		 firehoseEndpoint: %v
 		 eosEndpoint: %v
-		 dgraphEndpoint: %v
+		 dgraphGRPCEndpoint: %v
+		 dgraphURL: %v
 		 startBlock: %v
 		 prometheusPort: %v
 		 heartBeatFrequency: %v`,
@@ -147,7 +152,8 @@ func main() {
 		edgeTable,
 		firehoseEndpoint,
 		eosEndpoint,
-		dgraphEndpoint,
+		dgraphGRPCEndpoint,
+		dgraphURL,
 		startBlock,
 		prometheusPort,
 		heartBeatFrequency,
@@ -162,18 +168,20 @@ func main() {
 	if err != nil {
 		log.Panic(err, "Error creating dfclient")
 	}
-	dg, err := dgraph.New(dgraphEndpoint)
+	dg, err := dgraph.New(dgraphGRPCEndpoint)
 	if err != nil {
 		log.Panic(err, "Error creating dgraph client")
 	}
-	cache, err := doccache.New(dg, nil)
+	gqlAdmin := gql.NewAdmin(joinUrl(dgraphURL, "admin"))
+	gqlClient := gql.NewClient(joinUrl(dgraphURL, "graphql"))
+	cache, err := doccache.New(dg, gqlAdmin, gqlClient, nil)
 	if err != nil {
 		log.Panic(err, "Error creating doccache client")
 	}
 	log.Infof("Cursor: %v", cache.Cursor)
 	deltaRequest := &dfclient.DeltaStreamRequest{
 		StartBlockNum:      startBlock,
-		StartCursor:        cache.Cursor.Cursor,
+		StartCursor:        cache.Cursor.GetValue("cursor").(string),
 		StopBlockNum:       0,
 		ForkSteps:          []pbbstream.ForkStep{pbbstream.ForkStep_STEP_NEW, pbbstream.ForkStep_STEP_UNDO},
 		ReverseUndoOps:     true,
@@ -184,4 +192,8 @@ func main() {
 	client.DeltaStream(deltaRequest, &deltaStreamHandler{
 		doccache: cache,
 	})
+}
+
+func joinUrl(base, path string) string {
+	return fmt.Sprintf("%v/%v", strings.TrimRight(base, "/"), path)
 }

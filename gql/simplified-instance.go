@@ -2,11 +2,37 @@ package gql
 
 import (
 	"fmt"
+	"strconv"
+
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 )
 
 type SimplifiedInstance struct {
 	SimplifiedType *SimplifiedType
 	Values         map[string]interface{}
+}
+
+func (m *SimplifiedInstance) GetValue(name string) interface{} {
+	if value, ok := m.Values[name]; ok {
+		if value == nil {
+			return nil
+		}
+		field := m.SimplifiedType.GetField(name)
+		switch field.Type {
+		case GQLType_Int64:
+			intValue, _ := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64)
+			return intValue
+		case GQLType_Time:
+			return util.ToTime(fmt.Sprintf("%v", value))
+		default:
+			return value
+		}
+	}
+	return nil
+}
+
+func (m *SimplifiedInstance) SetValue(name string, value interface{}) {
+	m.Values[name] = value
 }
 
 func (m *SimplifiedInstance) GetIdValue() (interface{}, error) {
