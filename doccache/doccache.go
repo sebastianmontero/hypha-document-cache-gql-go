@@ -194,45 +194,32 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc, currentType *gql.SimplifiedType) error {
 	newInstance := parsedDoc.Instance
 	newType := newInstance.SimplifiedType
-	var missingFields []string
-	if currentType == nil {
-		missingFields = parsedDoc.ChecksumFields
-	} else {
-		for _, checksumField := range parsedDoc.ChecksumFields {
-			coreEdgeFieldName := GetCoreEdgeName(checksumField)
-			field := currentType.GetField(coreEdgeFieldName)
-			if field != nil {
-				newType.SetField(coreEdgeFieldName, field)
-				newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(newInstance.GetValue(checksumField)))
-			} else {
-				missingFields = append(missingFields, checksumField)
-			}
-		}
-	}
-
-	if len(missingFields) == 0 {
+	if !parsedDoc.HasCoreEdges() {
 		return nil
 	}
-	missingChecksums := make([]interface{}, 0, len(missingFields))
-	for _, missingField := range missingFields {
-		missingChecksums = append(missingChecksums, newInstance.GetValue(missingField))
+	checksums := make([]interface{}, 0, parsedDoc.NumCoreEdges())
+	for _, checksumField := range parsedDoc.ChecksumFields {
+		checksums = append(checksums, newInstance.GetValue(checksumField))
 	}
-	instances, err := m.client.Get(missingChecksums, gql.DocumentSimplifiedType, nil)
+	instances, err := m.client.Get(checksums, gql.DocumentSimplifiedType, nil)
 	if err != nil {
 		return fmt.Errorf("failed getting core edge documents, for document: %v of type: %v, error: %v", newInstance.GetValue("hash"), newInstance.GetValue("type"), err)
 	}
-	for _, field := range missingFields {
+	for _, field := range parsedDoc.ChecksumFields {
 		hash := newInstance.GetValue(field)
 		instance := instances[hash]
-		if instance == nil {
-			return fmt.Errorf("core edge with hash: %v not found", hash)
+		if instance != nil {
+			coreEdgeFieldName := GetCoreEdgeName(field)
+			newType.SetField(coreEdgeFieldName, &gql.SimplifiedField{
+				Name: coreEdgeFieldName,
+				Type: instance.GetValue("type").(string),
+			})
+			newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("hash")))
+		} else {
+			log.Errorf(nil, "core edge: %v with hash: %v not found for type: %v with hash: %v", field, hash, newType.Name, newInstance.GetValue("hash"))
+			// return fmt.Errorf("core edge with hash: %v not found", hash)
 		}
-		coreEdgeFieldName := GetCoreEdgeName(field)
-		newType.SetField(coreEdgeFieldName, &gql.SimplifiedField{
-			Name: coreEdgeFieldName,
-			Type: instance.GetValue("type").(string),
-		})
-		newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("hash")))
+
 	}
 	return nil
 }

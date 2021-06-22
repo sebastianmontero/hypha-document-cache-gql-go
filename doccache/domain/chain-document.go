@@ -48,6 +48,14 @@ func (m *ParsedDoc) GetValue(name string) interface{} {
 	return m.Instance.GetValue(name)
 }
 
+func (m *ParsedDoc) HasCoreEdges() bool {
+	return m.NumCoreEdges() > 0
+}
+
+func (m *ParsedDoc) NumCoreEdges() int {
+	return len(m.ChecksumFields)
+}
+
 //ChainDocs helper to enable chain docs decoding
 type ChainDocs struct {
 	Docs []*ChainDocument `json:"docs,omitempty"`
