@@ -80,6 +80,9 @@ func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 		if new.IsArray {
 			cardinality = "array"
 		}
+		// if new.Type == GQLType_Int64 && m.Type == GQLType_String {
+		// 	return nil
+		// }
 		return fmt.Errorf("can't make %v field: %v of type: %v, %v of type: %v", cardinality, new.Name, m.Type, cardinality, new.Type)
 	}
 	return nil
@@ -94,6 +97,7 @@ func (m *SimplifiedField) String() string {
 				Type: %v,
 				NonNull: %v,
 				IsArray: %v,
+				Index: %v,
 			}		
 		`,
 		m.IsID,
@@ -101,5 +105,6 @@ func (m *SimplifiedField) String() string {
 		m.Type,
 		m.NonNull,
 		m.IsArray,
+		m.Index,
 	)
 }

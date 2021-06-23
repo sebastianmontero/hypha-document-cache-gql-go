@@ -95,33 +95,33 @@ func TestToParsedDoc(t *testing.T) {
 		SimplifiedType: &gql.SimplifiedType{
 			Name: "Dho",
 			Fields: map[string]*gql.SimplifiedField{
-				"details_rootNode": {
-					Name:  "details_rootNode",
+				"details_rootNode_n": {
+					Name:  "details_rootNode_n",
 					Type:  "String",
 					Index: "exact",
 				},
-				"details_role": {
-					Name:  "details_role",
+				"details_role_c": {
+					Name:  "details_role_c",
 					Type:  "String",
 					Index: "exact",
 				},
-				"details_hvoiceSalaryPerPhase": {
-					Name:  "details_hvoiceSalaryPerPhase",
+				"details_hvoiceSalaryPerPhase_a": {
+					Name:  "details_hvoiceSalaryPerPhase_a",
 					Type:  "String",
 					Index: "term",
 				},
-				"details_timeShareX100": {
-					Name:  "details_timeShareX100",
+				"details_timeShareX100_i": {
+					Name:  "details_timeShareX100_i",
 					Type:  "Int64",
 					Index: "int64",
 				},
-				"system_originalApprovedDate": {
-					Name:  "system_originalApprovedDate",
+				"system_originalApprovedDate_t": {
+					Name:  "system_originalApprovedDate_t",
 					Type:  gql.GQLType_Time,
 					Index: "hour",
 				},
-				"system_period": {
-					Name:  "system_period",
+				"system_period_c": {
+					Name:  "system_period_c",
 					Type:  "String",
 					Index: "exact",
 				},
@@ -129,22 +129,22 @@ func TestToParsedDoc(t *testing.T) {
 			ExtendsDocument: true,
 		},
 		Values: map[string]interface{}{
-			"hash":                         "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-			"createdDate":                  "2020-11-12T18:27:47.000Z",
-			"creator":                      "dao.hypha",
-			"type":                         "Dho",
-			"details_rootNode":             "dao.hypha",
-			"details_role":                 "b7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
-			"details_hvoiceSalaryPerPhase": "4133.04 HVOICE",
-			"details_timeShareX100":        int64(60),
-			"system_originalApprovedDate":  "2021-04-12T05:09:36.5Z",
-			"system_period":                "f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
+			"hash":                           "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"creator":                        "dao.hypha",
+			"type":                           "Dho",
+			"details_rootNode_n":             "dao.hypha",
+			"details_role_c":                 "b7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
+			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+			"details_timeShareX100_i":        int64(60),
+			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
+			"system_period_c":                "f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 		},
 	}
 
 	expectedParsedDoc := &domain.ParsedDoc{
 		Instance:       expectedSimplifiedInstance,
-		ChecksumFields: []string{"details_role", "system_period"},
+		ChecksumFields: []string{"details_role_c", "system_period_c"},
 	}
 
 	assertParsedDoc(t, parsedDoc, expectedParsedDoc)

@@ -10,7 +10,7 @@ import (
 
 const CGL_ContentGroup = "content_group_label"
 
-const CL_type = "system_type"
+const CL_type = "system_type_n"
 
 const (
 	ContentType_Asset       = "asset"
@@ -37,6 +37,15 @@ var ContentTypeIndexMap = map[string]string{
 	ContentType_Name:        "exact",
 	ContentType_Time:        "hour",
 	ContentType_String:      "regexp",
+}
+
+var ContentTypeSuffixMap = map[string]string{
+	ContentType_Asset:       "a",
+	ContentType_Checksum256: "c",
+	ContentType_Int64:       "i",
+	ContentType_Name:        "n",
+	ContentType_Time:        "t",
+	ContentType_String:      "s",
 }
 
 type ParsedDoc struct {
@@ -139,10 +148,10 @@ func (m *ChainDocument) ToParsedDoc() (*ParsedDoc, error) {
 		if contentGroupLabel == nil {
 			return nil, fmt.Errorf("content group: %v for document with hash: %v does not have a content_group_label", i, m.Hash)
 		}
-		prefix := fmt.Sprintf("%v_", strcase.ToLowerCamel(contentGroupLabel.GetValue()))
+		prefix := fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel.GetValue()))
 		for _, content := range contentGroup {
 			if content.Label != CGL_ContentGroup {
-				name := fmt.Sprintf("%v%v", prefix, strcase.ToLowerCamel(content.Label))
+				name := fmt.Sprintf("%v_%v_%v", prefix, strcase.ToLowerCamel(content.Label), ContentTypeSuffixMap[content.GetType()])
 				fields[name] = &gql.SimplifiedField{
 					Name:  name,
 					Type:  content.GetGQLType(),

@@ -1,4 +1,4 @@
-name: Hypha Document Cache
+name: Hypha Document Cache GQL GO
 
 on:
   push:
@@ -14,15 +14,15 @@ jobs:
       - name: Set docker-image-name to testnet
         if: endsWith(github.ref, '/dev')
         run: |
-          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-go-testnet" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-gql-go-testnet" >> $GITHUB_ENV
       - name: Set docker-image-name to testnet2
         if: endsWith(github.ref, '/dev2')
         run: |
-          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-go-testnet2" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-gql-go-testnet2" >> $GITHUB_ENV
       - name: Set docker-image-name to mainnet
         if: endsWith(github.ref, '/master')
         run: |
-          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-go-mainnet" >> $GITHUB_ENV
+          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-gql-go-mainnet" >> $GITHUB_ENV
       - uses: actions/checkout@v1
       - name: Docker login
         run: docker login -u ${{ secrets.DOCKER_HUB_USER }} -p ${{ secrets.DOCKER_HUB_PASSWORD }}

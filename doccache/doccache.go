@@ -153,7 +153,7 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 	if err != nil {
 		return fmt.Errorf("failed to store document with hash: %v of type: %v, error getting simplified type from schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
 	}
-	err = m.AddCoreEdges(parsedDoc, currentSimplifiedType)
+	err = m.AddCoreEdges(parsedDoc)
 	if err != nil {
 		return fmt.Errorf("failed to store document with hash: %v of type: %v, error adding core edges: %v", chainDoc.Hash, instance.GetValue("type"), err)
 	}
@@ -179,6 +179,7 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 		//TODO: handle certificates
 		log.Infof("Updating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
 		mutation, err := instance.UpdateMutation(oldInstance)
+		fmt.Println("Update mutation: ", mutation)
 		if err != nil {
 			return fmt.Errorf("failed to update document with hash: %v of type: %v, error generating update mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
 		}
@@ -191,7 +192,7 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 	return nil
 }
 
-func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc, currentType *gql.SimplifiedType) error {
+func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
 	newInstance := parsedDoc.Instance
 	newType := newInstance.SimplifiedType
 	if !parsedDoc.HasCoreEdges() {
@@ -264,12 +265,22 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 
 	fromInstance, ok := instances[chainEdge.From]
 	if !ok {
-		return fmt.Errorf("FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		if deleteOp {
+			log.Errorf(nil, "FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+			return nil
+		} else {
+			return fmt.Errorf("FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		}
 	}
 
 	_, ok = instances[chainEdge.To]
 	if !ok {
-		return fmt.Errorf("TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		if deleteOp {
+			log.Errorf(nil, "TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+			return nil
+		} else {
+			return fmt.Errorf("TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		}
 	}
 	fromTypeName := fromInstance.GetValue("type").(string)
 	err = m.addSchemaEdge(fromTypeName, chainEdge.Name, "Document")

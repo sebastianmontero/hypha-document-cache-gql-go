@@ -21,8 +21,8 @@ var cache *doccache.Doccache
 var memberType = &gql.SimplifiedType{
 	Name: "Member",
 	Fields: map[string]*gql.SimplifiedField{
-		"details_account": {
-			Name:  "details_account",
+		"details_account_n": {
+			Name:  "details_account_n",
 			Type:  "String",
 			Index: "exact",
 		},
@@ -33,8 +33,8 @@ var memberType = &gql.SimplifiedType{
 var periodType = &gql.SimplifiedType{
 	Name: "Period",
 	Fields: map[string]*gql.SimplifiedField{
-		"details_number": {
-			Name:  "details_number",
+		"details_number_i": {
+			Name:  "details_number_i",
 			Type:  "Int64",
 			Index: "int64",
 		},
@@ -128,6 +128,13 @@ func TestOpCycle(t *testing.T) {
 					},
 				},
 				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"60",
+					},
+				},
+				{
 					Label: "start_period",
 					Value: []interface{}{
 						"checksum256",
@@ -163,32 +170,37 @@ func TestOpCycle(t *testing.T) {
 	expectedDhoType := &gql.SimplifiedType{
 		Name: "Dho",
 		Fields: map[string]*gql.SimplifiedField{
-			"details_rootNode": {
-				Name:  "details_rootNode",
+			"details_rootNode_n": {
+				Name:  "details_rootNode_n",
 				Type:  "String",
 				Index: "exact",
 			},
-			"details_hvoiceSalaryPerPhase": {
-				Name:  "details_hvoiceSalaryPerPhase",
+			"details_hvoiceSalaryPerPhase_a": {
+				Name:  "details_hvoiceSalaryPerPhase_a",
 				Type:  "String",
 				Index: "term",
 			},
-			"details_timeShareX100": {
-				Name:  "details_timeShareX100",
+			"details_timeShareX100_i": {
+				Name:  "details_timeShareX100_i",
 				Type:  "Int64",
 				Index: "int64",
 			},
-			"details_startPeriod": {
-				Name:  "details_startPeriod",
+			"details_strToInt_s": {
+				Name:  "details_strToInt_s",
+				Type:  "String",
+				Index: "regexp",
+			},
+			"details_startPeriod_c": {
+				Name:  "details_startPeriod_c",
 				Type:  "String",
 				Index: "exact",
 			},
-			"details_startPeriod_edge": {
-				Name: "details_startPeriod_edge",
+			"details_startPeriod_c_edge": {
+				Name: "details_startPeriod_c_edge",
 				Type: "Period",
 			},
-			"system_originalApprovedDate": {
-				Name:  "system_originalApprovedDate",
+			"system_originalApprovedDate_t": {
+				Name:  "system_originalApprovedDate_t",
 				Type:  gql.GQLType_Time,
 				Index: "hour",
 			},
@@ -198,16 +210,17 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance := &gql.SimplifiedInstance{
 		SimplifiedType: expectedDhoType,
 		Values: map[string]interface{}{
-			"hash":                         dhoHash,
-			"createdDate":                  "2020-11-12T18:27:47.000Z",
-			"creator":                      "dao.hypha",
-			"type":                         "Dho",
-			"details_rootNode":             "dao.hypha",
-			"details_hvoiceSalaryPerPhase": "4133.04 HVOICE",
-			"details_timeShareX100":        int64(60),
-			"details_startPeriod":          period1Hash,
-			"details_startPeriod_edge":     doccache.GetEdgeValue(period1Hash),
-			"system_originalApprovedDate":  "2021-04-12T05:09:36.5Z",
+			"hash":                           dhoHash,
+			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"creator":                        "dao.hypha",
+			"type":                           "Dho",
+			"details_rootNode_n":             "dao.hypha",
+			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+			"details_timeShareX100_i":        int64(60),
+			"details_strToInt_s":             "60",
+			"details_startPeriod_c":          period1Hash,
+			"details_startPeriod_c_edge":     doccache.GetEdgeValue(period1Hash),
+			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 		},
 	}
 	cursor = "cursor1"
@@ -318,6 +331,13 @@ func TestOpCycle(t *testing.T) {
 					},
 				},
 				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
 					Label: "start_period",
 					Value: []interface{}{
 						"checksum256",
@@ -366,34 +386,44 @@ func TestOpCycle(t *testing.T) {
 	}
 
 	expectedDhoType.SetField(
-		"details_periodCount",
+		"details_strToInt_i",
 		&gql.SimplifiedField{
-			Name:  "details_periodCount",
+			Name:  "details_strToInt_i",
 			Type:  "Int64",
 			Index: "int64",
 		},
 	)
 	expectedDhoType.SetField(
-		"system_endPeriod",
+		"details_periodCount_i",
 		&gql.SimplifiedField{
-			Name:  "system_endPeriod",
+			Name:  "details_periodCount_i",
+			Type:  "Int64",
+			Index: "int64",
+		},
+	)
+	expectedDhoType.SetField(
+		"system_endPeriod_c",
+		&gql.SimplifiedField{
+			Name:  "system_endPeriod_c",
 			Type:  "String",
 			Index: "exact",
 		},
 	)
 	expectedDhoType.SetField(
-		"system_endPeriod_edge",
+		"system_endPeriod_c_edge",
 		&gql.SimplifiedField{
-			Name: "system_endPeriod_edge",
+			Name: "system_endPeriod_c_edge",
 			Type: "Period",
 		},
 	)
-	expectedDHOInstance.SetValue("details_periodCount", int64(50))
-	expectedDHOInstance.SetValue("details_timeShareX100", nil)
-	expectedDHOInstance.SetValue("system_originalApprovedDate", "2021-05-12T05:09:36.5Z")
-	expectedDHOInstance.SetValue("details_hvoiceSalaryPerPhase", "4233.04 HVOICE")
-	expectedDHOInstance.SetValue("system_endPeriod", period2Hash)
-	expectedDHOInstance.SetValue("system_endPeriod_edge", doccache.GetEdgeValue(period2Hash))
+	expectedDHOInstance.SetValue("details_periodCount_i", int64(50))
+	expectedDHOInstance.SetValue("details_timeShareX100_i", nil)
+	expectedDHOInstance.SetValue("details_strToInt_s", nil)
+	expectedDHOInstance.SetValue("details_strToInt_i", int64(60))
+	expectedDHOInstance.SetValue("system_originalApprovedDate_t", "2021-05-12T05:09:36.5Z")
+	expectedDHOInstance.SetValue("details_hvoiceSalaryPerPhase_a", "4233.04 HVOICE")
+	expectedDHOInstance.SetValue("system_endPeriod_c", period2Hash)
+	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period2Hash))
 
 	cursor = "cursor6"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -446,6 +476,13 @@ func TestOpCycle(t *testing.T) {
 					},
 				},
 				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
 					Label: "period_count",
 					Value: []interface{}{
 						"int64",
@@ -486,8 +523,8 @@ func TestOpCycle(t *testing.T) {
 		},
 	}
 
-	expectedDHOInstance.SetValue("details_startPeriod", nil)
-	expectedDHOInstance.SetValue("details_startPeriod_edge", nil)
+	expectedDHOInstance.SetValue("details_startPeriod_c", nil)
+	expectedDHOInstance.SetValue("details_startPeriod_c_edge", nil)
 
 	cursor = "cursorB"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -924,11 +961,11 @@ func getMemberInstance(hash, account string) *gql.SimplifiedInstance {
 	return &gql.SimplifiedInstance{
 		SimplifiedType: memberType,
 		Values: map[string]interface{}{
-			"hash":            hash,
-			"createdDate":     "2020-11-12T19:27:47.000Z",
-			"creator":         account,
-			"type":            "Member",
-			"details_account": account,
+			"hash":              hash,
+			"createdDate":       "2020-11-12T19:27:47.000Z",
+			"creator":           account,
+			"type":              "Member",
+			"details_account_n": account,
 		},
 	}
 }
@@ -980,11 +1017,11 @@ func getPeriodInstance(hash string, number int64) *gql.SimplifiedInstance {
 	return &gql.SimplifiedInstance{
 		SimplifiedType: periodType,
 		Values: map[string]interface{}{
-			"hash":           hash,
-			"createdDate":    "2020-11-12T18:27:47.000Z",
-			"creator":        "dao.hypha",
-			"type":           "Period",
-			"details_number": number,
+			"hash":             hash,
+			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"creator":          "dao.hypha",
+			"type":             "Period",
+			"details_number_i": number,
 		},
 	}
 }
