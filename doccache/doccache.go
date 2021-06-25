@@ -16,21 +16,23 @@ var log *slog.Log
 
 //Doccache Service class to store and retrieve docs
 type Doccache struct {
-	dgraph *dgraph.Dgraph
-	admin  *gql.Admin
-	client *gql.Client
-	Cursor *gql.SimplifiedInstance
-	Schema *gql.Schema
+	dgraph       *dgraph.Dgraph
+	admin        *gql.Admin
+	client       *gql.Client
+	TypeMappings map[string][]string
+	Cursor       *gql.SimplifiedInstance
+	Schema       *gql.Schema
 }
 
 //New creates a new doccache
-func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, logConfig *slog.Config) (*Doccache, error) {
+func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, typeMappings map[string][]string, logConfig *slog.Config) (*Doccache, error) {
 	log = slog.New(logConfig, "doccache")
 
 	m := &Doccache{
-		dgraph: dg,
-		admin:  admin,
-		client: client,
+		dgraph:       dg,
+		admin:        admin,
+		client:       client,
+		TypeMappings: typeMappings,
 	}
 
 	err := m.PrepareSchema()
@@ -43,15 +45,6 @@ func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, logConfig *slo
 	}
 	m.Cursor = cursor
 	return m, nil
-}
-
-//SchemaExists set the base document schema in dgraph
-func (m *Doccache) SchemaExists() (bool, error) {
-	missing, err := m.dgraph.MissingTypes([]string{"Document", "ContentGroup", "Content", "Certificate", "Cursor"})
-	if err != nil {
-		return false, err
-	}
-	return len(missing) == 0, nil
 }
 
 //PrepareSchema prepares the base schema
@@ -144,7 +137,7 @@ func (m *Doccache) GetInstances(hashes []interface{}, simplifiedType *gql.Simpli
 
 //StoreDocument Creates a new document or updates its certificates
 func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	parsedDoc, err := chainDoc.ToParsedDoc()
+	parsedDoc, err := chainDoc.ToParsedDoc(m.TypeMappings)
 	if err != nil {
 		return fmt.Errorf("failed to store document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
 	}
@@ -235,7 +228,7 @@ func GetEdgeValue(hash interface{}) map[string]interface{} {
 
 //DeleteDocument Deletes a document
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
-	parsedDoc, err := chainDoc.ToParsedDoc()
+	parsedDoc, err := chainDoc.ToParsedDoc(m.TypeMappings)
 	if err != nil {
 		return fmt.Errorf("failed to delete document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
 	}

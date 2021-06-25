@@ -88,7 +88,7 @@ func TestToParsedDoc(t *testing.T) {
 			},
 		},
 	}
-	parsedDoc, err := chainDoc1.ToParsedDoc()
+	parsedDoc, err := chainDoc1.ToParsedDoc(make(map[string][]string))
 	assert.NilError(t, err)
 
 	expectedSimplifiedInstance := &gql.SimplifiedInstance{
@@ -210,6 +210,212 @@ func TestToParsedDoc(t *testing.T) {
 
 }
 
+func TestToParsedDocDeduceType(t *testing.T) {
+
+	createdDate := "2020-11-12T18:27:47.000"
+	chainDoc1 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"pass",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"0.00 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"fail",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"0.00 HVOICE",
+					},
+				},
+			},
+		},
+	}
+	typeMappings := map[string][]string{
+		"VoteTally": {
+			"pass_votePower",
+			"fail_votePower",
+		},
+	}
+	parsedDoc, err := chainDoc1.ToParsedDoc(typeMappings)
+	assert.NilError(t, err)
+
+	expectedSimplifiedInstance := &gql.SimplifiedInstance{
+		SimplifiedType: &gql.SimplifiedType{
+			Name: "VoteTally",
+			Fields: map[string]*gql.SimplifiedField{
+				"pass_votePower_a": {
+					Name:  "pass_votePower_a",
+					Type:  "String",
+					Index: "term",
+				},
+				"fail_votePower_a": {
+					Name:  "fail_votePower_a",
+					Type:  "String",
+					Index: "term",
+				},
+			},
+			ExtendsDocument: true,
+		},
+		Values: map[string]interface{}{
+			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"creator":          "dao.hypha",
+			"type":             "VoteTally",
+			"pass_votePower_a": "0.00 HVOICE",
+			"fail_votePower_a": "0.00 HVOICE",
+		},
+	}
+
+	expectedParsedDoc := &domain.ParsedDoc{
+		Instance:       expectedSimplifiedInstance,
+		ChecksumFields: []string{},
+	}
+
+	assertParsedDoc(t, parsedDoc, expectedParsedDoc)
+}
+
+func TestToParsedDocDeduceTypeFailsForMissingFields(t *testing.T) {
+
+	createdDate := "2020-11-12T18:27:47.000"
+	chainDoc1 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"fail",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"0.00 HVOICE",
+					},
+				},
+			},
+		},
+	}
+	typeMappings := map[string][]string{
+		"VoteTally": {
+			"pass_votePower",
+			"fail_votePower",
+		},
+	}
+	_, err := chainDoc1.ToParsedDoc(typeMappings)
+	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
+
+}
+
+func TestToParsedDocDotNamedType(t *testing.T) {
+
+	createdDate := "2020-11-12T18:27:47.000"
+	chainDoc1 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"fail",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"0.00 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote.tally",
+					},
+				},
+			},
+		},
+	}
+	typeMappings := map[string][]string{
+		"VoteTally": {
+			"pass_votePower",
+			"fail_votePower",
+		},
+	}
+	parsedDoc, err := chainDoc1.ToParsedDoc(typeMappings)
+	assert.NilError(t, err)
+
+	expectedSimplifiedInstance := &gql.SimplifiedInstance{
+		SimplifiedType: &gql.SimplifiedType{
+			Name: "VoteTally",
+			Fields: map[string]*gql.SimplifiedField{
+				"fail_votePower_a": {
+					Name:  "fail_votePower_a",
+					Type:  "String",
+					Index: "term",
+				},
+			},
+			ExtendsDocument: true,
+		},
+		Values: map[string]interface{}{
+			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
+			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"creator":          "dao.hypha",
+			"type":             "VoteTally",
+			"fail_votePower_a": "0.00 HVOICE",
+		},
+	}
+
+	expectedParsedDoc := &domain.ParsedDoc{
+		Instance:       expectedSimplifiedInstance,
+		ChecksumFields: []string{},
+	}
+
+	assertParsedDoc(t, parsedDoc, expectedParsedDoc)
+}
+
 func TestToParsedDocShouldFailForNoContentGroupLabel(t *testing.T) {
 
 	createdDate := "2020-11-12T18:27:47.000"
@@ -237,8 +443,8 @@ func TestToParsedDocShouldFailForNoContentGroupLabel(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToParsedDoc()
-	assert.ErrorContains(t, err, "content group: 0 for document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a content_group_label")
+	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
+	assert.ErrorContains(t, err, "failed to get content_group_label for content group: 0 in document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, err: content group not found")
 
 }
 
@@ -269,7 +475,7 @@ func TestToParsedDocShouldFailForInvalidInt(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToParsedDoc()
+	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
 	assert.ErrorContains(t, err, "failed to parse content value to int64")
 }
 
@@ -300,7 +506,16 @@ func TestToParsedDocShouldFailForNoType(t *testing.T) {
 			},
 		},
 	}
-	_, err := chainDoc1.ToParsedDoc()
+	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
+	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
+
+	typeMappings := map[string][]string{
+		"VoteTally": {
+			"pass_votePower",
+			"fail_votePower",
+		},
+	}
+	_, err = chainDoc1.ToParsedDoc(typeMappings)
 	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
 }
 

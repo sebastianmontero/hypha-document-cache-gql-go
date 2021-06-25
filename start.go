@@ -2,10 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/dfuse-io/bstream"
 	pbcodec "github.com/dfuse-io/dfuse-eosio/pb/dfuse/eosio/codec/v1"
@@ -18,24 +15,24 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring/metrics"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
 var (
-	contract  = os.Getenv("CONTRACT_NAME")
-	docTable  = os.Getenv("DOC_TABLE_NAME")
-	edgeTable = os.Getenv("EDGE_TABLE_NAME")
-	log       *slog.Log
+	log *slog.Log
 )
 
 type deltaStreamHandler struct {
 	cursor   string
 	doccache *doccache.Doccache
+	config   *util.Config
 }
 
 func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
 	log.Debugf("On Delta: \nCursor: %v \nFork Step: %v \nDelta %v ", cursor, forkStep, delta)
-	if delta.TableName == docTable {
+	log.Debugf("Doc table name: %v ", m.config.DocTableName)
+	if delta.TableName == m.config.DocTableName {
 		chainDoc := &domain.ChainDocument{}
 		switch delta.Operation {
 		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_UPDATE:
@@ -60,7 +57,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 			}
 			metrics.DeletedDocs.Inc()
 		}
-	} else if delta.TableName == edgeTable {
+	} else if delta.TableName == m.config.EdgeTableName {
 		switch delta.Operation {
 		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_REMOVE:
 			var (
@@ -113,87 +110,49 @@ func (m *deltaStreamHandler) OnComplete(lastBlockRef bstream.BlockRef) {
 }
 
 func main() {
+	if len(os.Args) != 2 {
+		log.Panic(nil, "Config file has to be specified as the only cmd argument")
+	}
 	log = slog.New(&slog.Config{Pretty: true, Level: zerolog.DebugLevel}, "start-doccache")
-	firehoseEndpoint := os.Getenv("FIREHOSE_ENDPOINT")
-	dfuseAPIKey := os.Getenv("DFUSE_API_KEY")
-	eosEndpoint := os.Getenv("EOS_ENDPOINT")
-	dgraphGRPCEndpoint := fmt.Sprintf("%v:%v", os.Getenv("DGRAPH_ALPHA_HOST"), os.Getenv("DGRAPH_ALPHA_EXTERNAL_PORT"))
-	dgraphURL := fmt.Sprintf("http://%v:%v", os.Getenv("DGRAPH_ALPHA_HOST"), os.Getenv("DGRAPH_ALPHA_HTTP_PORT"))
-
-	startBlock, err := strconv.ParseInt(os.Getenv("START_BLOCK"), 10, 64)
+	config, err := util.LoadConfig(os.Args[1])
 	if err != nil {
-		log.Panicf(err, "Unable to parse start block: %v", os.Getenv("START_BLOCK"))
+		log.Panicf(err, "Unable to load config file: %v", os.Args[1])
 	}
 
-	prometheusPort, err := strconv.ParseUint(os.Getenv("PROMETHEUS_PORT"), 10, 32)
-	if err != nil {
-		log.Panicf(err, "Unable to parse prometheus port: %v", os.Getenv("PROMETHEUS_PORT"))
-	}
+	log.Info(config.String())
 
-	heartBeatFrequency, err := strconv.ParseUint(os.Getenv("HEART_BEAT_FREQUENCY"), 10, 32)
-	if err != nil {
-		log.Panicf(err, "Unable to parse prometheus port: %v", os.Getenv("PROMETHEUS_PORT"))
-	}
-
-	log.Infof(
-		`Env Vars
-		 contract: %v
-		 docTable: %v
-		 edgeTable: %v
-		 firehoseEndpoint: %v
-		 eosEndpoint: %v
-		 dgraphGRPCEndpoint: %v
-		 dgraphURL: %v
-		 startBlock: %v
-		 prometheusPort: %v
-		 heartBeatFrequency: %v`,
-		contract,
-		docTable,
-		edgeTable,
-		firehoseEndpoint,
-		eosEndpoint,
-		dgraphGRPCEndpoint,
-		dgraphURL,
-		startBlock,
-		prometheusPort,
-		heartBeatFrequency,
-	)
-
-	go monitoring.SetupEndpoint(uint(prometheusPort))
+	go monitoring.SetupEndpoint(config.PrometheusPort)
 	if err != nil {
 		log.Panic(err, "Error seting up prometheus endpoint")
 	}
 
-	client, err := dfclient.NewDfClient(firehoseEndpoint, dfuseAPIKey, eosEndpoint, nil)
+	client, err := dfclient.NewDfClient(config.FirehoseEndpoint, config.DfuseApiKey, config.EosEndpoint, nil)
 	if err != nil {
 		log.Panic(err, "Error creating dfclient")
 	}
-	dg, err := dgraph.New(dgraphGRPCEndpoint)
+	dg, err := dgraph.New(config.DgraphGRPCEndpoint)
 	if err != nil {
 		log.Panic(err, "Error creating dgraph client")
 	}
-	gqlAdmin := gql.NewAdmin(joinUrl(dgraphURL, "admin"))
-	gqlClient := gql.NewClient(joinUrl(dgraphURL, "graphql"))
-	cache, err := doccache.New(dg, gqlAdmin, gqlClient, nil)
+	gqlAdmin := gql.NewAdmin(config.GQLAdminURL)
+	gqlClient := gql.NewClient(config.GQLClientURL)
+	cache, err := doccache.New(dg, gqlAdmin, gqlClient, config.TypeMappings, nil)
 	if err != nil {
 		log.Panic(err, "Error creating doccache client")
 	}
 	log.Infof("Cursor: %v", cache.Cursor)
 	deltaRequest := &dfclient.DeltaStreamRequest{
-		StartBlockNum:      startBlock,
+		StartBlockNum:      config.StartBlock,
 		StartCursor:        cache.Cursor.GetValue("cursor").(string),
 		StopBlockNum:       0,
 		ForkSteps:          []pbbstream.ForkStep{pbbstream.ForkStep_STEP_NEW, pbbstream.ForkStep_STEP_UNDO},
 		ReverseUndoOps:     true,
-		HeartBeatFrequency: uint(heartBeatFrequency),
+		HeartBeatFrequency: config.HeartBeatFrequency,
 	}
 	// deltaRequest.AddTables("eosio.token", []string{"balance"})
-	deltaRequest.AddTables(contract, []string{docTable, edgeTable})
+	deltaRequest.AddTables(config.ContractName, []string{config.DocTableName, config.EdgeTableName})
 	client.DeltaStream(deltaRequest, &deltaStreamHandler{
 		doccache: cache,
+		config:   config,
 	})
-}
-
-func joinUrl(base, path string) string {
-	return fmt.Sprintf("%v/%v", strings.TrimRight(base, "/"), path)
 }

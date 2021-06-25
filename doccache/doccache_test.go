@@ -11,7 +11,8 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
-	"github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
+	tutil "github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 	"gotest.tools/assert"
 )
 
@@ -55,8 +56,12 @@ func TestMain(m *testing.M) {
 
 func beforeAll() {
 	var err error
-	admin := gql.NewAdmin("http://localhost:8080/admin")
-	client := gql.NewClient("http://localhost:8080/graphql")
+	config, err := util.LoadConfig("./config.yml")
+	if err != nil {
+		log.Fatal(err, "Failed to load configuration")
+	}
+	admin := gql.NewAdmin(config.GQLAdminURL)
+	client := gql.NewClient(config.GQLClientURL)
 	dg, err = dgraph.New("")
 	if err != nil {
 		log.Fatal(err, "Unable to create dgraph")
@@ -66,7 +71,7 @@ func beforeAll() {
 		log.Fatal(err, "Unable to drop all")
 	}
 	time.Sleep(time.Second * 2)
-	cache, err = doccache.New(dg, admin, client, nil)
+	cache, err = doccache.New(dg, admin, client, config.TypeMappings, nil)
 	if err != nil {
 		log.Fatal(err, "Failed creating DocCache")
 	}
@@ -889,11 +894,98 @@ func TestOpCycle(t *testing.T) {
 
 }
 
+func TestDocumentCreationDeduceType(t *testing.T) {
+
+	createdDate := "2020-11-12T18:27:47.000"
+	hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	chainDoc1 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        hash,
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"pass",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"0.00 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"fail",
+					},
+				},
+				{
+					Label: "vote_power",
+					Value: []interface{}{
+						"asset",
+						"1.00 HVOICE",
+					},
+				},
+			},
+		},
+	}
+
+	expectedInstance := &gql.SimplifiedInstance{
+		SimplifiedType: &gql.SimplifiedType{
+			Name: "VoteTally",
+			Fields: map[string]*gql.SimplifiedField{
+				"pass_votePower_a": {
+					Name:  "pass_votePower_a",
+					Type:  "String",
+					Index: "term",
+				},
+				"fail_votePower_a": {
+					Name:  "fail_votePower_a",
+					Type:  "String",
+					Index: "term",
+				},
+			},
+			ExtendsDocument: true,
+		},
+		Values: map[string]interface{}{
+			"hash":             hash,
+			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"creator":          "dao.hypha",
+			"type":             "VoteTally",
+			"pass_votePower_a": "0.00 HVOICE",
+			"fail_votePower_a": "1.00 HVOICE",
+		},
+	}
+
+	cursor := "cursor0"
+	err := cache.StoreDocument(chainDoc1, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedInstance)
+	assertCursor(t, cursor)
+
+	cursor = "cursor1"
+
+	err = cache.DeleteDocument(chainDoc1, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, hash, "VoteTally")
+	assertCursor(t, cursor)
+
+}
+
 func assertCursor(t *testing.T, cursor string) {
 	expected := gql.NewCursorInstance(doccache.CursorId, cursor)
 	actual, err := cache.GetInstance(doccache.CursorId, gql.CursorSimplifiedType, nil)
 	assert.NilError(t, err)
-	util.AssertSimplifiedInstance(t, actual, expected)
+	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
 
 func assertInstance(t *testing.T, expected *gql.SimplifiedInstance) {
@@ -903,7 +995,7 @@ func assertInstance(t *testing.T, expected *gql.SimplifiedInstance) {
 	assert.NilError(t, err)
 	fmt.Println("Expected: ", expected)
 	fmt.Println("Actual: ", actual)
-	util.AssertSimplifiedInstance(t, actual, expected)
+	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
 
 func assertInstanceNotExists(t *testing.T, hash, typeName string) {

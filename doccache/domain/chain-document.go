@@ -3,6 +3,7 @@ package domain
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
@@ -133,7 +134,7 @@ type ChainDocument struct {
 	Certificates  []*ChainCertificate `json:"certificates,omitempty"`
 }
 
-func (m *ChainDocument) ToParsedDoc() (*ParsedDoc, error) {
+func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDoc, error) {
 
 	fields := make(map[string]*gql.SimplifiedField)
 	checksumFields := make([]string, 0)
@@ -144,11 +145,11 @@ func (m *ChainDocument) ToParsedDoc() (*ParsedDoc, error) {
 	}
 
 	for i, contentGroup := range m.ContentGroups {
-		contentGroupLabel := FindChainContent(contentGroup, CGL_ContentGroup)
-		if contentGroupLabel == nil {
-			return nil, fmt.Errorf("content group: %v for document with hash: %v does not have a content_group_label", i, m.Hash)
+		contentGroupLabel, err := GetContentGroupLabel(contentGroup)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get content_group_label for content group: %v in document with hash: %v, err: %v", i, m.Hash, err)
 		}
-		prefix := fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel.GetValue()))
+		prefix := fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel))
 		for _, content := range contentGroup {
 			if content.Label != CGL_ContentGroup {
 				name := fmt.Sprintf("%v_%v_%v", prefix, strcase.ToLowerCamel(content.Label), ContentTypeSuffixMap[content.GetType()])
@@ -170,9 +171,13 @@ func (m *ChainDocument) ToParsedDoc() (*ParsedDoc, error) {
 	}
 	typeName, ok := values[CL_type].(string)
 	if !ok {
-		return nil, fmt.Errorf("document with hash: %v does not have a type", m.Hash)
+		typeName = deduceDocType(toUntypedMap(fields), typeMappings)
+		if typeName == "" {
+			return nil, fmt.Errorf("document with hash: %v does not have a type, and couldn't deduce from typeMappings", m.Hash)
+		}
 	}
-	typeName = strcase.ToCamel(typeName)
+
+	typeName = strcase.ToCamel(strings.ReplaceAll(typeName, ".", "_"))
 	delete(values, CL_type)
 	delete(fields, CL_type)
 	values["type"] = typeName
@@ -197,6 +202,44 @@ func FindChainContent(contents []*ChainContent, label string) *ChainContent {
 		}
 	}
 	return nil
+}
+
+func GetContentGroupLabel(contents []*ChainContent) (string, error) {
+	contentGroupLabel := FindChainContent(contents, CGL_ContentGroup)
+	if contentGroupLabel == nil {
+		return "", fmt.Errorf("content group not found")
+	}
+	return contentGroupLabel.GetValue(), nil
+}
+
+func deduceDocType(contentMap map[string]*gql.SimplifiedField, typeMappings map[string][]string) string {
+	for typeName, labels := range typeMappings {
+		if containsLabels(contentMap, labels) {
+			return typeName
+		}
+	}
+	return ""
+}
+func containsLabels(contentMap map[string]*gql.SimplifiedField, labels []string) bool {
+	for _, label := range labels {
+		if _, ok := contentMap[label]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func toUntypedMap(typed map[string]*gql.SimplifiedField) map[string]*gql.SimplifiedField {
+	untyped := make(map[string]*gql.SimplifiedField, len(typed))
+	for label, value := range typed {
+		pos := strings.LastIndex(label, "_")
+		untypedLabel := label
+		if pos > 0 {
+			untypedLabel = string([]rune(label)[:pos])
+		}
+		untyped[untypedLabel] = value
+	}
+	return untyped
 }
 
 func (m *ChainDocument) String() string {
