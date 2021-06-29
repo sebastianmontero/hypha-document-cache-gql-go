@@ -258,22 +258,14 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 
 	fromInstance, ok := instances[chainEdge.From]
 	if !ok {
-		if deleteOp {
-			log.Errorf(nil, "FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-			return nil
-		} else {
-			return fmt.Errorf("FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-		}
+		log.Errorf(nil, "FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		return nil
 	}
 
 	_, ok = instances[chainEdge.To]
 	if !ok {
-		if deleteOp {
-			log.Errorf(nil, "TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-			return nil
-		} else {
-			return fmt.Errorf("TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
-		}
+		log.Errorf(nil, "TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		return nil
 	}
 	fromTypeName := fromInstance.GetValue("type").(string)
 	err = m.addSchemaEdge(fromTypeName, chainEdge.Name, "Document")
