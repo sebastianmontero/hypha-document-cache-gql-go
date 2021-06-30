@@ -574,323 +574,6 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 	assertInstanceNotExists(t, dhoHash, "Dho")
 	assertCursor(t, cursor)
-	// t.Logf("Updating document certificates")
-
-	// certificationDate := "2020-11-12T20:27:47.000"
-	// chainDoc1.Certificates = []*domain.ChainCertificate{
-	// 	{
-	// 		Certifier:         "sebastian",
-	// 		Notes:             "Sebastian's Notes",
-	// 		CertificationDate: certificationDate,
-	// 	},
-	// }
-	// expectedDoc1.Certificates = []*domain.Certificate{
-	// 	{
-	// 		Certifier:             "sebastian",
-	// 		Notes:                 "Sebastian's Notes",
-	// 		CertificationDate:     domain.ToTime(certificationDate),
-	// 		CertificationSequence: 1,
-	// 		DType:                 []string{"Certificate"},
-	// 	},
-	// }
-	// cursor = "cursor2"
-	// err = cache.StoreDocument(chainDoc1, cursor)
-	// if err != nil {
-	// 	t.Fatalf("StoreDocument failed: %v", err)
-	// }
-
-	// doc, err = cache.GetByHash("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true})
-	// if err != nil {
-	// 	t.Fatalf("GetByHash failed: %v", err)
-	// }
-	// compareDocs(expectedDoc1, doc, t)
-	// validateCursor(cursor, t)
-
-	// t.Logf("Updating document certificates 2")
-
-	// certificationDate = "2020-11-14T20:27:47.000"
-	// chainDoc1.Certificates = append(chainDoc1.Certificates, &domain.ChainCertificate{
-	// 	Certifier:         "pedro",
-	// 	Notes:             "Pedro's Notes",
-	// 	CertificationDate: certificationDate,
-	// })
-	// expectedDoc1.Certificates = append(expectedDoc1.Certificates, &domain.Certificate{
-	// 	Certifier:             "pedro",
-	// 	Notes:                 "Pedro's Notes",
-	// 	CertificationDate:     domain.ToTime(certificationDate),
-	// 	CertificationSequence: 2,
-	// 	DType:                 []string{"Certificate"},
-	// })
-
-	// cursor = "cursor3"
-	// err = cache.StoreDocument(chainDoc1, cursor)
-	// if err != nil {
-	// 	t.Fatalf("StoreDocument failed: %v", err)
-	// }
-
-	// doc, err = cache.GetByHash("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true})
-	// if err != nil {
-	// 	t.Fatalf("GetByHash failed: %v", err)
-	// }
-	// compareDocs(expectedDoc1, doc, t)
-	// validateCursor(cursor, t)
-
-	// createdDate = "2020-11-12T22:09:12.000"
-	// startTime := "2021-04-01T15:50:54.291"
-	// chainDoc2 := &domain.ChainDocument{
-	// 	ID:          1,
-	// 	Hash:        "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// 	CreatedDate: createdDate,
-	// 	Creator:     "dao.hypha1",
-	// 	ContentGroups: [][]*domain.ChainContent{
-	// 		{
-	// 			{
-	// 				Label: "member",
-	// 				Value: []interface{}{
-	// 					"name",
-	// 					"1onefiftyfor",
-	// 				},
-	// 			},
-	// 			{
-	// 				Label: "role",
-	// 				Value: []interface{}{
-	// 					"name",
-	// 					"dev",
-	// 				},
-	// 			},
-	// 			{
-	// 				Label: "start_time",
-	// 				Value: []interface{}{
-	// 					"time_point",
-	// 					startTime,
-	// 				},
-	// 			},
-	// 		},
-	// 		{
-	// 			{
-	// 				Label: "root",
-	// 				Value: []interface{}{
-	// 					"checksum256",
-	// 					"d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 				},
-	// 			},
-	// 			{
-	// 				Label: "vote_count",
-	// 				Value: []interface{}{
-	// 					"int64",
-	// 					89,
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
-
-	// voteCount := int64(89)
-	// expectedDoc2 := &domain.Document{
-	// 	Hash:        "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// 	CreatedDate: domain.ToTime(createdDate),
-	// 	Creator:     "dao.hypha1",
-	// 	DType:       []string{"Document"},
-	// 	ContentGroups: []*domain.ContentGroup{
-	// 		{
-	// 			ContentGroupSequence: 1,
-	// 			DType:                []string{"ContentGroup"},
-	// 			Contents: []*domain.Content{
-	// 				{
-	// 					Label:           "member",
-	// 					Type:            "name",
-	// 					Value:           "1onefiftyfor",
-	// 					ContentSequence: 1,
-	// 					DType:           []string{"Content"},
-	// 				},
-	// 				{
-	// 					Label:           "role",
-	// 					Type:            "name",
-	// 					Value:           "dev",
-	// 					ContentSequence: 2,
-	// 					DType:           []string{"Content"},
-	// 				},
-	// 				{
-	// 					Label:           "start_time",
-	// 					Type:            "time_point",
-	// 					Value:           startTime,
-	// 					TimeValue:       domain.ToTime(startTime),
-	// 					ContentSequence: 3,
-	// 					DType:           []string{"Content"},
-	// 				},
-	// 			},
-	// 		},
-	// 		{
-	// 			ContentGroupSequence: 2,
-	// 			DType:                []string{"ContentGroup"},
-	// 			Contents: []*domain.Content{
-	// 				{
-	// 					Label:           "root",
-	// 					Type:            "checksum256",
-	// 					Value:           "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 					ContentSequence: 1,
-	// 					DType:           []string{"Content"},
-	// 					Document:        []*domain.Document{expectedDoc1},
-	// 				},
-	// 				{
-	// 					Label:           "vote_count",
-	// 					Type:            "int64",
-	// 					Value:           "89",
-	// 					IntValue:        &voteCount,
-	// 					ContentSequence: 2,
-	// 					DType:           []string{"Content"},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
-
-	// cursor = "cursor4"
-	// t.Log("Storing another document")
-	// err = cache.StoreDocument(chainDoc2, cursor)
-	// if err != nil {
-	// 	t.Fatalf("StoreDocument failed: %v", err)
-	// }
-
-	// doc, err = cache.GetByHash("4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff", &RequestConfig{ContentGroups: true, Certificates: true})
-	// if err != nil {
-	// 	t.Fatalf("GetByHash failed: %v", err)
-	// }
-	// compareDocs(expectedDoc2, doc, t)
-	// validateCursor(cursor, t)
-
-	// t.Log("Check original document wasn't modified")
-	// doc, err = cache.GetByHash("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true})
-	// if err != nil {
-	// 	t.Fatalf("GetByHash failed: %v", err)
-	// }
-	// compareDocs(expectedDoc1, doc, t)
-
-	// t.Log("Adding edge")
-	// cursor = "cursor5"
-	// err = cache.MutateEdge(&domain.ChainEdge{
-	// 	Name: "member",
-	// 	From: "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 	To:   "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// }, false, cursor)
-	// if err != nil {
-	// 	t.Fatalf("MutateEdge for adding failed: %v", err)
-	// }
-
-	// docAsMap, err := cache.GetByHashAsMap("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true, Edges: []string{"member"}})
-	// if err != nil {
-	// 	t.Fatalf("GetByHashAsMap failed: %v", err)
-	// }
-	// t.Logf("Doc as map: %v", docAsMap)
-	// if docAsMap == nil {
-	// 	t.Fatal("Expected to find document: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, found none")
-	// }
-	// membersi, ok := docAsMap["member"]
-	// if !ok {
-	// 	t.Fatal("Expected to find member edge found none")
-	// }
-	// members := membersi.([]interface{})
-	// if len(members) != 1 {
-	// 	t.Fatalf("Expected to find 1 member found: %v", len(members))
-	// }
-	// member := members[0].(map[string]interface{})
-	// hashi, ok := member["hash"]
-	// if !ok {
-	// 	t.Fatal("Expected to find hash found none")
-	// }
-	// hash := hashi.(string)
-	// if hash != "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff" {
-	// 	t.Fatalf("Expected hash to be: 4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff found: %v", hash)
-	// }
-	// validateCursor(cursor, t)
-
-	// t.Log("Adding same edge")
-	// cursor = "cursor6"
-	// err = cache.MutateEdge(&domain.ChainEdge{
-	// 	Name: "member",
-	// 	From: "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 	To:   "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// }, false, cursor)
-	// if err != nil {
-	// 	t.Fatalf("MutateEdge for adding failed: %v", err)
-	// }
-
-	// docAsMap, err = cache.GetByHashAsMap("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true, Edges: []string{"member"}})
-	// if err != nil {
-	// 	t.Fatalf("GetByHashAsMap failed: %v", err)
-	// }
-	// t.Logf("Doc as map: %v", docAsMap)
-	// if docAsMap == nil {
-	// 	t.Fatal("Expected to find document: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, found none")
-	// }
-	// membersi, ok = docAsMap["member"]
-	// if !ok {
-	// 	t.Fatal("Expected to find member edge found none")
-	// }
-	// members = membersi.([]interface{})
-	// if len(members) != 1 {
-	// 	t.Fatalf("Expected to find 1 member found: %v", len(members))
-	// }
-	// member = members[0].(map[string]interface{})
-	// hashi, ok = member["hash"]
-	// if !ok {
-	// 	t.Fatal("Expected to find hash found none")
-	// }
-	// hash = hashi.(string)
-	// if hash != "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff" {
-	// 	t.Fatalf("Expected hash to be: 4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff found: %v", hash)
-	// }
-	// validateCursor(cursor, t)
-
-	// t.Log("Removing edge")
-	// cursor = "cursor7"
-	// err = cache.MutateEdge(&domain.ChainEdge{
-	// 	Name: "member",
-	// 	From: "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 	To:   "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// }, true, cursor)
-	// if err != nil {
-	// 	t.Fatalf("MutateEdge for removing failed: %v", err)
-	// }
-
-	// docAsMap, err = cache.GetByHashAsMap("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true, Edges: []string{"member"}})
-	// if err != nil {
-	// 	t.Fatalf("GetByHashAsMap failed: %v", err)
-	// }
-	// t.Logf("Doc as map: %v", docAsMap)
-	// if docAsMap == nil {
-	// 	t.Fatal("Expected to find document: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, found none")
-	// }
-	// membersi, ok = docAsMap["member"]
-	// if ok {
-	// 	t.Fatal("Expected not to find member edge")
-	// }
-	// validateCursor(cursor, t)
-
-	// t.Log("Removing edge 2")
-	// cursor = "cursor8"
-	// err = cache.MutateEdge(&domain.ChainEdge{
-	// 	Name: "member",
-	// 	From: "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
-	// 	To:   "4190fc69b4f88f23ae45828a2df64f79bd687a3cdba8c84fa5a89ce9b88de8ff",
-	// }, true, cursor)
-	// if err != nil {
-	// 	t.Fatalf("MutateEdge for removing failed: %v", err)
-	// }
-
-	// docAsMap, err = cache.GetByHashAsMap("d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e", &RequestConfig{ContentGroups: true, Certificates: true, Edges: []string{"member"}})
-	// if err != nil {
-	// 	t.Fatalf("GetByHashAsMap failed: %v", err)
-	// }
-	// t.Logf("Doc as map: %v", docAsMap)
-	// if docAsMap == nil {
-	// 	t.Fatal("Expected to find document: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, found none")
-	// }
-	// membersi, ok = docAsMap["member"]
-	// if ok {
-	// 	t.Fatal("Expected not to find member edge")
-	// }
-	// validateCursor(cursor, t)
 
 }
 
@@ -977,6 +660,211 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 	err = cache.DeleteDocument(chainDoc1, cursor)
 	assert.NilError(t, err)
 	assertInstanceNotExists(t, hash, "VoteTally")
+	assertCursor(t, cursor)
+
+}
+
+func TestMissingCoreEdge(t *testing.T) {
+
+	t.Log("Store assignment 1 with related core edge non existant")
+	createdDate := "2020-11-12T18:27:47.000"
+	period1Hash := "a5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	hash := "b5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        hash,
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "start_period",
+					Value: []interface{}{
+						"checksum256",
+						period1Hash,
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assignment",
+					},
+				},
+			},
+		},
+	}
+
+	expectedType := &gql.SimplifiedType{
+		Name: "Assignment",
+		Fields: map[string]*gql.SimplifiedField{
+			"details_startPeriod_c": {
+				Name:  "details_startPeriod_c",
+				Type:  "String",
+				Index: "exact",
+			},
+		},
+		ExtendsDocument: true,
+	}
+
+	expectedInstance := &gql.SimplifiedInstance{
+		SimplifiedType: expectedType,
+		Values: map[string]interface{}{
+			"hash":                  hash,
+			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "Assignment",
+			"details_startPeriod_c": period1Hash,
+		},
+	}
+
+	cursor := "cursor0"
+	err := cache.StoreDocument(assignment1, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Store core edge")
+	period1Doc := getPeriodDoc(period1Hash, 1)
+	period1Instance := getPeriodInstance(period1Hash, 1)
+	cursor = "cursor1"
+	err = cache.StoreDocument(period1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, period1Instance)
+	assertCursor(t, cursor)
+
+	t.Log("Store assignment 2 with related core edge")
+	hash2 := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2 := &domain.ChainDocument{
+		ID:          0,
+		Hash:        hash2,
+		CreatedDate: createdDate,
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "start_period",
+					Value: []interface{}{
+						"checksum256",
+						period1Hash,
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assignment",
+					},
+				},
+			},
+		},
+	}
+
+	expectedType.SetField("details_startPeriod_c_edge",
+		&gql.SimplifiedField{
+			Name: "details_startPeriod_c_edge",
+			Type: "Period",
+		})
+
+	expectedInstance2 := &gql.SimplifiedInstance{
+		SimplifiedType: expectedType,
+		Values: map[string]interface{}{
+			"hash":                       hash2,
+			"createdDate":                "2020-11-12T18:27:47.000Z",
+			"creator":                    "dao.hypha",
+			"type":                       "Assignment",
+			"details_startPeriod_c":      period1Hash,
+			"details_startPeriod_c_edge": map[string]interface{}{"hash": period1Hash},
+		},
+	}
+
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedInstance2)
+	assertCursor(t, cursor)
+
+	t.Log("Verify assignment 1 has a nil core edge")
+	expectedInstance.SetValue("details_startPeriod_c_edge", nil)
+	assertInstance(t, expectedInstance)
+
+	cursor = "cursor4"
+
+	t.Log("Delete core edge document")
+	err = cache.DeleteDocument(period1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, period1Hash, "Period")
+	assertCursor(t, cursor)
+
+	t.Log("Verify assignment 2 has a nil core edge")
+	expectedInstance2.SetValue("details_startPeriod_c_edge", nil)
+	assertInstance(t, expectedInstance2)
+
+	t.Log("Store core edge again")
+	cursor = "cursor5"
+	err = cache.StoreDocument(period1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, period1Instance)
+	assertCursor(t, cursor)
+
+	expectedInstance2.SetValue("details_startPeriod_c_edge", map[string]interface{}{"hash": period1Hash})
+
+	t.Log("Update assignment 2, should relink core edge")
+	cursor = "cursor6"
+	err = cache.StoreDocument(assignment2, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedInstance2)
+	assertCursor(t, cursor)
+
+	t.Log("Delete documents")
+	cursor = "cursor7"
+	err = cache.DeleteDocument(assignment1, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, hash, "Assignment")
+	assertCursor(t, cursor)
+
+	cursor = "cursor8"
+	err = cache.DeleteDocument(assignment2, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, hash2, "Assignment")
+	assertCursor(t, cursor)
+
+	cursor = "cursor9"
+	err = cache.DeleteDocument(period1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, period1Hash, "Period")
 	assertCursor(t, cursor)
 
 }

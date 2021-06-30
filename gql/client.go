@@ -66,12 +66,16 @@ func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projecti
 	if err != nil {
 		return nil, fmt.Errorf("failed getting: %v with ids: %v error: %v", simplifiedType.Name, ids, err)
 	}
+	// fmt.Println("getting: %v with ids: %v, query:%v", simplifiedType.Name, ids, query)
 	req := graphql.NewRequest(query)
 	req.Var("ids", ids)
 	var response interface{}
 	err = m.client.Run(context.Background(), req, &response)
 	if err != nil {
-		return nil, fmt.Errorf("failed getting: %v with ids: %v, query:%v, error: %v", simplifiedType.Name, ids, query, err)
+		// fmt.Println("Response: ", response)
+		if isFatalError(response, err) {
+			return nil, fmt.Errorf("failed getting: %v with ids: %v, query:%v, error: %v", simplifiedType.Name, ids, query, err)
+		}
 	}
 	data := response.(map[string]interface{})[queryName].([]interface{})
 	// fmt.Println("Response: ", response)
@@ -84,6 +88,11 @@ func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projecti
 		}
 	}
 	return instances, nil
+}
+
+func isFatalError(response interface{}, err error) bool {
+	errMsg := strings.ToLower(err.Error())
+	return response == nil || !(strings.Contains(errMsg, "non-nullable field") && strings.Contains(errMsg, "was not present in result"))
 }
 
 func (m *Client) Mutate(mutations ...*Mutation) error {
