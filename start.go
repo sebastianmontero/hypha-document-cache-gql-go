@@ -110,10 +110,10 @@ func (m *deltaStreamHandler) OnComplete(lastBlockRef bstream.BlockRef) {
 }
 
 func main() {
+	log = slog.New(&slog.Config{Pretty: true, Level: zerolog.DebugLevel}, "start-doccache")
 	if len(os.Args) != 2 {
 		log.Panic(nil, "Config file has to be specified as the only cmd argument")
 	}
-	log = slog.New(&slog.Config{Pretty: true, Level: zerolog.DebugLevel}, "start-doccache")
 	config, err := util.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Panicf(err, "Unable to load config file: %v", os.Args[1])
