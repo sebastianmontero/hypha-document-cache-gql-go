@@ -2,53 +2,23 @@ package gql
 
 import (
 	"fmt"
-	"strconv"
-
-	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 )
 
 type SimplifiedInstance struct {
+	*SimplifiedBaseInstance
 	SimplifiedType *SimplifiedType
-	Values         map[string]interface{}
 }
 
-func (m *SimplifiedInstance) GetValue(name string) interface{} {
-	if value, ok := m.Values[name]; ok {
-		if value == nil {
-			return nil
-		}
-		field := m.SimplifiedType.GetField(name)
-		switch field.Type {
-		case GQLType_Int64:
-			intValue, _ := strconv.ParseInt(fmt.Sprintf("%v", value), 10, 64)
-			return intValue
-		case GQLType_Time:
-			return util.ToTime(fmt.Sprintf("%v", value))
-		default:
-			return value
-		}
+func NewSimplifiedInstance(simplifiedType *SimplifiedType, values map[string]interface{}) *SimplifiedInstance {
+	return &SimplifiedInstance{
+		SimplifiedBaseInstance: NewSimplifiedBaseInstance(simplifiedType.SimplifiedBaseType, values),
+		SimplifiedType:         simplifiedType,
 	}
-	return nil
 }
 
-func (m *SimplifiedInstance) SetValue(name string, value interface{}) {
-	m.Values[name] = value
-}
-
-func (m *SimplifiedInstance) GetIdValue() (interface{}, error) {
-	id, err := m.SimplifiedType.GetIdField()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get id value, error: %v", err)
-	}
-	idValue, ok := m.Values[id.Name]
-	if !ok {
-		return nil, fmt.Errorf("no id value set for type: %v, values: %v", m.SimplifiedType.Name, m.Values)
-	}
-	return idValue, nil
-}
-
-func (m *SimplifiedInstance) GetUpdateValues() (map[string]interface{}, error) {
-	id, err := m.SimplifiedType.GetIdField()
+//idName: main non mutable id field
+func (m *SimplifiedInstance) GetUpdateValues(idName string) (map[string]interface{}, error) {
+	id, err := m.SimplifiedType.GetIdField(idName)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't get update values, error: %v", err)
 	}
@@ -77,13 +47,13 @@ func (m *SimplifiedInstance) AddMutation(upsert bool) *Mutation {
 	return m.SimplifiedType.AddMutation(m.Values, upsert)
 }
 
-func (m *SimplifiedInstance) UpdateMutation(oldInstance *SimplifiedInstance) (*Mutation, error) {
-	idValue, err := m.GetIdValue()
+func (m *SimplifiedInstance) UpdateMutation(idName string, oldInstance *SimplifiedInstance) (*Mutation, error) {
+	idValue, err := m.GetIdValue(idName)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating update mutation, err: %v", err)
 	}
 
-	set, err := m.GetUpdateValues()
+	set, err := m.GetUpdateValues(idName)
 	if err != nil {
 		return nil, err
 	}
@@ -94,26 +64,26 @@ func (m *SimplifiedInstance) UpdateMutation(oldInstance *SimplifiedInstance) (*M
 		remove = make(map[string]interface{})
 	}
 
-	return m.SimplifiedType.UpdateMutation(idValue, set, remove)
+	return m.SimplifiedType.UpdateMutation(idName, idValue, set, remove)
 }
 
-func (m *SimplifiedInstance) DeleteMutation() (*Mutation, error) {
-	idValue, err := m.GetIdValue()
+func (m *SimplifiedInstance) DeleteMutation(idName string) (*Mutation, error) {
+	idValue, err := m.GetIdValue(idName)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating update mutation, err: %v", err)
 	}
-	return m.SimplifiedType.DeleteMutation(idValue)
+	return m.SimplifiedType.DeleteMutation(idName, idValue)
 }
 
 func (m *SimplifiedInstance) String() string {
 	return fmt.Sprintf(
 		`
 			SimplfiedInstance {
+				SimplifiedBaseInstance: %v
 				SimplifiedType: %v
-				Values: %v
 			}
 		`,
+		m.SimplifiedBaseInstance,
 		m.SimplifiedType,
-		m.Values,
 	)
 }

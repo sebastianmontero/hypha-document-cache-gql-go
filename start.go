@@ -10,12 +10,12 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/sebastianmontero/dfuse-firehose-client/dfclient"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/config"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring/metrics"
-	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 	"github.com/sebastianmontero/slog-go/slog"
 )
 
@@ -26,7 +26,7 @@ var (
 type deltaStreamHandler struct {
 	cursor   string
 	doccache *doccache.Doccache
-	config   *util.Config
+	config   *config.Config
 }
 
 func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
@@ -114,7 +114,7 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Panic(nil, "Config file has to be specified as the only cmd argument")
 	}
-	config, err := util.LoadConfig(os.Args[1])
+	config, err := config.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Panicf(err, "Unable to load config file: %v", os.Args[1])
 	}
@@ -136,7 +136,7 @@ func main() {
 	}
 	gqlAdmin := gql.NewAdmin(config.GQLAdminURL)
 	gqlClient := gql.NewClient(config.GQLClientURL)
-	cache, err := doccache.New(dg, gqlAdmin, gqlClient, config.TypeMappings, nil)
+	cache, err := doccache.New(dg, gqlAdmin, gqlClient, config, nil)
 	if err != nil {
 		log.Panic(err, "Error creating doccache client")
 	}

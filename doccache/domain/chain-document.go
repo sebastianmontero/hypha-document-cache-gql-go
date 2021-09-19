@@ -49,6 +49,8 @@ var ContentTypeSuffixMap = map[string]string{
 	ContentType_String:      "s",
 }
 
+const CoreEdgeSuffix = "edge"
+
 type ParsedDoc struct {
 	Instance       *gql.SimplifiedInstance
 	ChecksumFields []string
@@ -86,7 +88,7 @@ func (m *ChainContent) IsChecksum() bool {
 }
 
 func (m *ChainContent) GetGQLType() string {
-	return ContentTypeGQLTypeMap[m.GetType()]
+	return GetGQLType(m.GetType())
 }
 
 func (m *ChainContent) GetValue() string {
@@ -149,14 +151,14 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 		if err != nil {
 			return nil, fmt.Errorf("failed to get content_group_label for content group: %v in document with hash: %v, err: %v", i, m.Hash, err)
 		}
-		prefix := fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel))
+		prefix := GetFieldPrefix(contentGroupLabel)
 		for _, content := range contentGroup {
 			if content.Label != CGL_ContentGroup {
-				name := fmt.Sprintf("%v_%v_%v", prefix, strcase.ToLowerCamel(content.Label), ContentTypeSuffixMap[content.GetType()])
+				name := GetFieldName(prefix, content.Label, content.GetType())
 				fields[name] = &gql.SimplifiedField{
 					Name:  name,
 					Type:  content.GetGQLType(),
-					Index: ContentTypeIndexMap[content.GetType()],
+					Index: GetIndex(content.GetType()),
 				}
 				if content.IsChecksum() {
 					checksumFields = append(checksumFields, name)
@@ -177,22 +179,54 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 		}
 	}
 
-	typeName = strcase.ToCamel(strings.ReplaceAll(typeName, ".", "_"))
+	typeName = GetObjectTypeName(typeName)
 	delete(values, CL_type)
 	delete(fields, CL_type)
 	values["type"] = typeName
-	instance := &gql.SimplifiedInstance{
-		SimplifiedType: &gql.SimplifiedType{
-			Name:            typeName,
-			Fields:          fields,
-			ExtendsDocument: true,
-		},
-		Values: values,
-	}
+	instance := gql.NewSimplifiedInstance(
+		gql.NewSimplifiedType(typeName, fields, gql.DocumentSimplifiedInterface),
+		values,
+	)
 	return &ParsedDoc{
 		Instance:       instance,
 		ChecksumFields: checksumFields,
 	}, nil
+}
+
+func GetFieldPrefix(contentGroupLabel string) string {
+	return fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel))
+}
+
+func GetFieldName(cgPrefix, fieldLabel, fieldType string) string {
+	return fmt.Sprintf("%v_%v_%v", cgPrefix, strcase.ToLowerCamel(fieldLabel), ContentTypeSuffixMap[fieldType])
+}
+
+func GetObjectTypeName(typeName string) string {
+	return strcase.ToCamel(strings.ReplaceAll(typeName, ".", "_"))
+}
+
+func GetCoreEdgeName(checksumFieldName string) string {
+	return fmt.Sprintf("%v_%v", checksumFieldName, CoreEdgeSuffix)
+}
+
+func GetGQLType(typeName string) string {
+	return ContentTypeGQLTypeMap[typeName]
+}
+
+func GetIndex(typeName string) string {
+	return ContentTypeIndexMap[typeName]
+}
+
+func IsBaseType(typeName string) bool {
+	return typeName == ContentType_Asset || typeName == ContentType_Checksum256 ||
+		typeName == ContentType_Int64 || typeName == ContentType_Name ||
+		typeName == ContentType_Time || typeName == ContentType_String
+}
+
+func IsIDableType(typeName string) bool {
+	return typeName == ContentType_Checksum256 ||
+		typeName == ContentType_Name ||
+		typeName == ContentType_String
 }
 
 func FindChainContent(contents []*ChainContent, label string) *ChainContent {

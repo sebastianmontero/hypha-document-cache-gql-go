@@ -1,47 +1,60 @@
 package doccache_test
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/config"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/doccache/domain"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
+	"github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
 	tutil "github.com/sebastianmontero/hypha-document-cache-gql-go/test/util"
-	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 	"gotest.tools/assert"
 )
 
 var dg *dgraph.Dgraph
 var cache *doccache.Doccache
+var admin *gql.Admin
 
-var memberType = &gql.SimplifiedType{
-	Name: "Member",
-	Fields: map[string]*gql.SimplifiedField{
+var userType = gql.NewSimplifiedType(
+	"User",
+	map[string]*gql.SimplifiedField{
 		"details_account_n": {
 			Name:  "details_account_n",
 			Type:  "String",
 			Index: "exact",
 		},
 	},
-	ExtendsDocument: true,
-}
+	gql.DocumentSimplifiedInterface,
+)
 
-var periodType = &gql.SimplifiedType{
-	Name: "Period",
-	Fields: map[string]*gql.SimplifiedField{
+var memberType = gql.NewSimplifiedType(
+	"Member",
+	map[string]*gql.SimplifiedField{
+		"details_account_n": {
+			Name:  "details_account_n",
+			Type:  "String",
+			Index: "exact",
+		},
+	},
+	gql.DocumentSimplifiedInterface,
+)
+
+var periodType = gql.NewSimplifiedType(
+	"Period",
+	map[string]*gql.SimplifiedField{
 		"details_number_i": {
 			Name:  "details_number_i",
 			Type:  "Int64",
 			Index: "int64",
 		},
 	},
-	ExtendsDocument: true,
-}
+	gql.DocumentSimplifiedInterface,
+)
 
 // TestMain will exec each test, one by one
 func TestMain(m *testing.M) {
@@ -55,12 +68,19 @@ func TestMain(m *testing.M) {
 }
 
 func beforeAll() {
+}
+
+func afterAll() {
+	dg.Close()
+}
+
+func setUp(configPath string) {
 	var err error
-	config, err := util.LoadConfig("./config.yml")
+	config, err := config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatal(err, "Failed to load configuration")
 	}
-	admin := gql.NewAdmin(config.GQLAdminURL)
+	admin = gql.NewAdmin(config.GQLAdminURL)
 	client := gql.NewClient(config.GQLClientURL)
 	dg, err = dgraph.New("")
 	if err != nil {
@@ -71,18 +91,15 @@ func beforeAll() {
 		log.Fatal(err, "Unable to drop all")
 	}
 	time.Sleep(time.Second * 2)
-	cache, err = doccache.New(dg, admin, client, config.TypeMappings, nil)
+	cache, err = doccache.New(dg, admin, client, config, nil)
 	if err != nil {
 		log.Fatal(err, "Failed creating DocCache")
 	}
 }
 
-func afterAll() {
-	dg.Close()
-}
-
 func TestOpCycle(t *testing.T) {
-	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorId)
+	setUp("./config-no-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing period 1 document")
 	period1Hash := "h4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
@@ -172,9 +189,9 @@ func TestOpCycle(t *testing.T) {
 			},
 		},
 	}
-	expectedDhoType := &gql.SimplifiedType{
-		Name: "Dho",
-		Fields: map[string]*gql.SimplifiedField{
+	expectedDhoType := gql.NewSimplifiedType(
+		"Dho",
+		map[string]*gql.SimplifiedField{
 			"details_rootNode_n": {
 				Name:  "details_rootNode_n",
 				Type:  "String",
@@ -210,11 +227,11 @@ func TestOpCycle(t *testing.T) {
 				Index: "hour",
 			},
 		},
-		ExtendsDocument: true,
-	}
-	expectedDHOInstance := &gql.SimplifiedInstance{
-		SimplifiedType: expectedDhoType,
-		Values: map[string]interface{}{
+		gql.DocumentSimplifiedInterface,
+	)
+	expectedDHOInstance := gql.NewSimplifiedInstance(
+		expectedDhoType,
+		map[string]interface{}{
 			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -227,7 +244,7 @@ func TestOpCycle(t *testing.T) {
 			"details_startPeriod_c_edge":     doccache.GetEdgeValue(period1Hash),
 			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 		},
-	}
+	)
 	cursor = "cursor1"
 	err = cache.StoreDocument(dhoDoc, cursor)
 	assert.NilError(t, err)
@@ -238,7 +255,7 @@ func TestOpCycle(t *testing.T) {
 	member1Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	memberDoc := getMemberDoc(member1Hash, "member1")
 	expectedMemberInstance := getMemberInstance(member1Hash, "member1")
-	cursor = "cursor2"
+	cursor = "cursor2_1"
 
 	err = cache.StoreDocument(memberDoc, cursor)
 	assert.NilError(t, err)
@@ -249,15 +266,26 @@ func TestOpCycle(t *testing.T) {
 	member2Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	memberDoc = getMemberDoc(member2Hash, "member2")
 	expectedMemberInstance = getMemberInstance(member2Hash, "member2")
-	cursor = "cursor3"
+	cursor = "cursor2_2"
 
 	err = cache.StoreDocument(memberDoc, cursor)
 	assert.NilError(t, err)
 	assertInstance(t, expectedMemberInstance)
 	assertCursor(t, cursor)
 
-	t.Log("Adding edge")
-	cursor = "cursor4"
+	t.Logf("Storing user document")
+	user1Hash := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	userDoc := getUserDoc(user1Hash, "user1")
+	expectedUserInstance := getUserInstance(user1Hash, "user1")
+	cursor = "cursor3"
+
+	err = cache.StoreDocument(userDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedUserInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding member edge1")
+	cursor = "cursor4_1"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
 		From: dhoHash,
@@ -267,7 +295,7 @@ func TestOpCycle(t *testing.T) {
 
 	expectedDhoType.SetField("member", &gql.SimplifiedField{
 		Name:    "member",
-		Type:    "Document",
+		Type:    "Member",
 		IsArray: true,
 		NonNull: false,
 	})
@@ -278,8 +306,8 @@ func TestOpCycle(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
-	t.Log("Adding second edge")
-	cursor = "cursor5"
+	t.Log("Adding member edge2")
+	cursor = "cursor4_2"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
 		From: dhoHash,
@@ -290,6 +318,31 @@ func TestOpCycle(t *testing.T) {
 	expectedMemberEdge = []map[string]interface{}{
 		{"hash": member1Hash},
 		{"hash": member2Hash},
+	}
+	expectedDHOInstance.SetValue("member", expectedMemberEdge)
+	assertInstance(t, expectedDHOInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding user edge1, should cause edge type to change to doc")
+	cursor = "cursor4_2"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "member",
+		From: dhoHash,
+		To:   user1Hash,
+	}, false, cursor)
+	assert.NilError(t, err)
+
+	expectedDhoType.SetField("member", &gql.SimplifiedField{
+		Name:    "member",
+		Type:    "Document",
+		IsArray: true,
+		NonNull: false,
+	})
+
+	expectedMemberEdge = []map[string]interface{}{
+		{"hash": member1Hash},
+		{"hash": member2Hash},
+		{"hash": user1Hash},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
@@ -436,7 +489,7 @@ func TestOpCycle(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
-	t.Log("Deleting edge")
+	t.Log("Deleting member 1 edge")
 	cursor = "cursor7"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
@@ -447,6 +500,7 @@ func TestOpCycle(t *testing.T) {
 
 	expectedMemberEdge = []map[string]interface{}{
 		{"hash": member2Hash},
+		{"hash": user1Hash},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
@@ -537,7 +591,22 @@ func TestOpCycle(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
-	t.Log("Deleting second edge")
+	t.Log("Deleting user 1 edge")
+	cursor = "cursor7_1"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "member",
+		From: dhoHash,
+		To:   user1Hash,
+	}, true, cursor)
+	assert.NilError(t, err)
+
+	expectedMemberEdge = []map[string]interface{}{
+		{"hash": member2Hash},
+	}
+	expectedDHOInstance.SetValue("member", expectedMemberEdge)
+	assertInstance(t, expectedDHOInstance)
+
+	t.Log("Deleting member2 edge")
 	cursor = "cursor8"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
@@ -578,7 +647,7 @@ func TestOpCycle(t *testing.T) {
 }
 
 func TestDocumentCreationDeduceType(t *testing.T) {
-
+	setUp("./config-with-special-config.yml")
 	createdDate := "2020-11-12T18:27:47.000"
 	hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	chainDoc1 := &domain.ChainDocument{
@@ -622,10 +691,10 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 		},
 	}
 
-	expectedInstance := &gql.SimplifiedInstance{
-		SimplifiedType: &gql.SimplifiedType{
-			Name: "VoteTally",
-			Fields: map[string]*gql.SimplifiedField{
+	expectedInstance := gql.NewSimplifiedInstance(
+		gql.NewSimplifiedType(
+			"VoteTally",
+			map[string]*gql.SimplifiedField{
 				"pass_votePower_a": {
 					Name:  "pass_votePower_a",
 					Type:  "String",
@@ -637,9 +706,9 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 					Index: "term",
 				},
 			},
-			ExtendsDocument: true,
-		},
-		Values: map[string]interface{}{
+			gql.DocumentSimplifiedInterface,
+		),
+		map[string]interface{}{
 			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -647,7 +716,7 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 			"pass_votePower_a": "0.00 HVOICE",
 			"fail_votePower_a": "1.00 HVOICE",
 		},
-	}
+	)
 
 	cursor := "cursor0"
 	err := cache.StoreDocument(chainDoc1, cursor)
@@ -665,7 +734,7 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 }
 
 func TestMissingCoreEdge(t *testing.T) {
-
+	setUp("./config-no-special-config.yml")
 	t.Log("Store assignment 1 with related core edge non existant")
 	createdDate := "2020-11-12T18:27:47.000"
 	period1Hash := "a5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
@@ -711,28 +780,28 @@ func TestMissingCoreEdge(t *testing.T) {
 		},
 	}
 
-	expectedType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	expectedType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"details_startPeriod_c": {
 				Name:  "details_startPeriod_c",
 				Type:  "String",
 				Index: "exact",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
 
-	expectedInstance := &gql.SimplifiedInstance{
-		SimplifiedType: expectedType,
-		Values: map[string]interface{}{
+	expectedInstance := gql.NewSimplifiedInstance(
+		expectedType,
+		map[string]interface{}{
 			"hash":                  hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"creator":               "dao.hypha",
 			"type":                  "Assignment",
 			"details_startPeriod_c": period1Hash,
 		},
-	}
+	)
 
 	cursor := "cursor0"
 	err := cache.StoreDocument(assignment1, cursor)
@@ -798,9 +867,9 @@ func TestMissingCoreEdge(t *testing.T) {
 			Type: "Period",
 		})
 
-	expectedInstance2 := &gql.SimplifiedInstance{
-		SimplifiedType: expectedType,
-		Values: map[string]interface{}{
+	expectedInstance2 := gql.NewSimplifiedInstance(
+		expectedType,
+		map[string]interface{}{
 			"hash":                       hash2,
 			"createdDate":                "2020-11-12T18:27:47.000Z",
 			"creator":                    "dao.hypha",
@@ -808,7 +877,7 @@ func TestMissingCoreEdge(t *testing.T) {
 			"details_startPeriod_c":      period1Hash,
 			"details_startPeriod_c_edge": map[string]interface{}{"hash": period1Hash},
 		},
-	}
+	)
 
 	cursor = "cursor2"
 	err = cache.StoreDocument(assignment2, cursor)
@@ -869,9 +938,3421 @@ func TestMissingCoreEdge(t *testing.T) {
 
 }
 
+func TestLogicalIds(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing dho1 document")
+	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	dhoDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        dhoHash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+			},
+		},
+	}
+	expectedDhoType := gql.NewSimplifiedType(
+		"Dho",
+		map[string]*gql.SimplifiedField{
+			"details_rootNode_n": {
+				Name:    "details_rootNode_n",
+				Type:    "String",
+				Index:   "exact",
+				IsID:    true,
+				NonNull: true,
+			},
+			"details_hvoiceSalaryPerPhase_a": {
+				Name:  "details_hvoiceSalaryPerPhase_a",
+				Type:  "String",
+				Index: "term",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+	expectedDHOInstance := gql.NewSimplifiedInstance(
+		expectedDhoType,
+		map[string]interface{}{
+			"hash":                           dhoHash,
+			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"creator":                        "dao.hypha",
+			"type":                           "Dho",
+			"details_rootNode_n":             "dao.hypha",
+			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(dhoDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedDHOInstance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing dho2 document")
+	dhoHash = "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	dhoDoc = &domain.ChainDocument{
+		ID:          0,
+		Hash:        dhoHash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.beta",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.14 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+			},
+		},
+	}
+	expectedDHOInstance = gql.NewSimplifiedInstance(
+		expectedDhoType,
+		map[string]interface{}{
+			"hash":                           dhoHash,
+			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"creator":                        "dao.hypha",
+			"type":                           "Dho",
+			"details_rootNode_n":             "dao.beta",
+			"details_hvoiceSalaryPerPhase_a": "4133.14 HVOICE",
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(dhoDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedDHOInstance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing memeber document")
+	memberHash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	memberDoc := &domain.ChainDocument{
+		ID:          1,
+		Hash:        memberHash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "bob",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "member",
+					Value: []interface{}{
+						"name",
+						"bob",
+					},
+				},
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.beta",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"member",
+					},
+				},
+			},
+		},
+	}
+	expectedMemberType := gql.NewSimplifiedType(
+		"Member",
+		map[string]*gql.SimplifiedField{
+			"details_rootNode_n": {
+				Name:  "details_rootNode_n",
+				Type:  "String",
+				Index: "exact",
+			},
+			"details_member_n": {
+				Name:    "details_member_n",
+				Type:    "String",
+				Index:   "exact",
+				IsID:    true,
+				NonNull: true,
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+	expectedMemberInstance := gql.NewSimplifiedInstance(
+		expectedMemberType,
+		map[string]interface{}{
+			"hash":               memberHash,
+			"createdDate":        "2020-11-12T19:27:47.000Z",
+			"creator":            "bob",
+			"type":               "Member",
+			"details_rootNode_n": "dao.beta",
+			"details_member_n":   "bob",
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(memberDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedMemberInstance)
+	assertCursor(t, cursor)
+}
+
+func TestLogicalIdsShouldFailForNonExistantId(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing dho1 document")
+	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	dhoDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        dhoHash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+			},
+		},
+	}
+	cursor := "cursor1"
+	err := cache.StoreDocument(dhoDoc, cursor)
+	assert.ErrorContains(t, err, "does not have logical id field")
+
+}
+
+func TestCustomInterfaceInitialization(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Custom Interfaces and associated types should have been created during doccache initialization")
+
+	currentSchema, err := admin.GetCurrentSchema()
+
+	t.Logf("Checking Vote Type related to Votable interface")
+	voteType := gql.NewSimplifiedType(
+		"Vote",
+		map[string]*gql.SimplifiedField{},
+		gql.DocumentSimplifiedInterface,
+	)
+	assert.NilError(t, err)
+	util.AssertType(t, voteType, currentSchema)
+
+	t.Logf("Checking VoteTally Type related to Votable interface")
+	voteTallyType := gql.NewSimplifiedType(
+		"VoteTally",
+		map[string]*gql.SimplifiedField{},
+		gql.DocumentSimplifiedInterface,
+	)
+	assert.NilError(t, err)
+	util.AssertType(t, voteTallyType, currentSchema)
+
+	t.Logf("Checking Votable interface")
+	votableInterface := gql.NewSimplifiedInterface(
+		"Votable",
+		map[string]*gql.SimplifiedField{
+			"ballot_expiration_t": {
+				Name:  "ballot_expiration_t",
+				Type:  gql.GQLType_Time,
+				Index: "hour",
+			},
+			"details_title_s": {
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Index:   "regexp",
+				IsID:    true,
+				NonNull: true,
+			},
+			"details_description_s": {
+				Name:  "details_description_s",
+				Type:  gql.GQLType_String,
+				Index: "regexp",
+			},
+			"vote": {
+				Name:    "vote",
+				Type:    "Vote",
+				IsArray: true,
+			},
+			"votetally": {
+				Name:    "votetally",
+				Type:    "VoteTally",
+				IsArray: true,
+			},
+		},
+		[]string{
+			"ballot_expiration_t",
+		},
+	)
+	util.AssertInterface(t, votableInterface, currentSchema)
+
+	t.Logf("Checking Profile Type related to User interface")
+	profileDataType := gql.NewSimplifiedType(
+		"ProfileData",
+		map[string]*gql.SimplifiedField{},
+		gql.DocumentSimplifiedInterface,
+	)
+	assert.NilError(t, err)
+	util.AssertType(t, profileDataType, currentSchema)
+
+	t.Logf("Checking User interface")
+	userInterface := gql.NewSimplifiedInterface(
+		"User",
+		map[string]*gql.SimplifiedField{
+			"details_profile_c": {
+				Name:  "details_profile_c",
+				Type:  gql.GQLType_String,
+				Index: "exact",
+			},
+			"details_profile_c_egde": {
+				Name: "details_profile_c_edge",
+				Type: "ProfileData",
+			},
+			"details_account_n": {
+				Name:  "details_account_n",
+				Type:  gql.GQLType_String,
+				Index: "exact",
+			},
+		},
+		[]string{
+			"details_profile_c",
+			"details_account_s",
+		},
+	)
+	util.AssertInterface(t, userInterface, currentSchema)
+
+	t.Logf("Checking Extendable interface")
+	extendableInterface := gql.NewSimplifiedInterface(
+		"Extendable",
+		map[string]*gql.SimplifiedField{
+			"details_extensionName_s": {
+				Name:  "details_extensionName_s",
+				Type:  gql.GQLType_String,
+				Index: "regexp",
+			},
+			"extension": {
+				Name:    "extension",
+				Type:    "Document",
+				IsArray: true,
+			},
+		},
+		[]string{
+			"details_extensionName_s",
+		},
+	)
+	util.AssertInterface(t, extendableInterface, currentSchema)
+
+}
+
+func TestCustomInterfaces(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						10,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 0",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:  "details_title_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":            assignment1Hash,
+			"createdDate":     "2020-11-12T19:27:47.000Z",
+			"creator":         "dao.hypha",
+			"type":            "AssigProp",
+			"ballot_votes_i":  10,
+			"details_title_s": "Assignment 0",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Votable interface")
+	assignment2Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment2Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                  assignment2Hash,
+			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
+			"ballot_votes_i":        nil,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment2Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 3 document, does not have signature fields but because the assignment type already has the interface it should implement it")
+	assignment3Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment3Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment3Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "started_at",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:28:47.000",
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 2",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_startedAt_t": {
+					Name:  "details_startedAt_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment3Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                  assignment3Hash,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   nil,
+			"ballot_votes_i":        nil,
+			"details_startedAt_t":   "2020-11-15T18:28:47.000Z",
+			"details_title_s":       "Assignment 2",
+			"details_description_s": nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor3"
+	err = cache.StoreDocument(assignment3Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment3Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing profile data document to be used as core edge")
+	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	profileDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        profileHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "name",
+					Value: []interface{}{
+						"string",
+						"User 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"profile.data",
+					},
+				},
+			},
+		},
+	}
+	expectedProfileType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "ProfileData",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_name_s": {
+					Name:  "details_name_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedProfileType.SetFields(gql.DocumentFieldArgs)
+	expectedProfileInstance := gql.NewSimplifiedInstance(
+		expectedProfileType,
+		map[string]interface{}{
+			"hash":           profileHash,
+			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"creator":        "dao.hypha",
+			"type":           "ProfileData",
+			"details_name_s": "User 1",
+		},
+	)
+	cursor = "cursor4"
+	err = cache.StoreDocument(profileDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedProfileInstance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 4 document, has signature fields for User Interface, it should be added")
+	assignment4Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment4Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment4Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "profile",
+					Value: []interface{}{
+						"checksum256",
+						profileHash,
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 3",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						"user1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_startedAt_t": {
+					Name:  "details_startedAt_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+				"details_profile_c": {
+					Name:  "details_profile_c",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+				"details_profile_c_edge": {
+					Name: "details_profile_c_edge",
+					Type: "ProfileData",
+				},
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable", "User"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment4Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                   assignment4Hash,
+			"createdDate":            "2020-11-12T18:27:48.000Z",
+			"creator":                "dao.hypha",
+			"type":                   "AssigProp",
+			"ballot_expiration_t":    nil,
+			"ballot_votes_i":         nil,
+			"details_startedAt_t":    nil,
+			"details_title_s":        "Assignment 3",
+			"details_description_s":  nil,
+			"details_profile_c":      profileHash,
+			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
+			"details_account_n":      "user1",
+			"vote":                   make([]map[string]interface{}, 0),
+			"votetally":              make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor5"
+	err = cache.StoreDocument(assignment4Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment4Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing vote document to be used as edge that is part of the interface")
+	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	voteDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        voteHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "result",
+					Value: []interface{}{
+						"string",
+						"For",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote",
+					},
+				},
+			},
+		},
+	}
+	expectedVoteType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Vote",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_result_s": {
+					Name:  "details_result_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+	expectedVoteInstance := gql.NewSimplifiedInstance(
+		expectedVoteType,
+		map[string]interface{}{
+			"hash":             voteHash,
+			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"creator":          "dao.hypha",
+			"type":             "Vote",
+			"details_result_s": "For",
+		},
+	)
+	cursor = "cursor6"
+	err = cache.StoreDocument(voteDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedVoteInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding vote edge")
+	cursor = "cursor7"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "vote",
+		From: assignment4Hash,
+		To:   voteHash,
+	}, false, cursor)
+	assert.NilError(t, err)
+
+	expectedVoteEdge := []map[string]interface{}{
+		{"hash": voteHash},
+	}
+	expectedAssignment4Instance.SetValue("vote", expectedVoteEdge)
+	assertInstance(t, expectedAssignment4Instance)
+	assertCursor(t, cursor)
+
+}
+
+func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing profile data document to be used as core edge")
+	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	profileDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        profileHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "name",
+					Value: []interface{}{
+						"string",
+						"User 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"profile.data",
+					},
+				},
+			},
+		},
+	}
+	expectedProfileType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "ProfileData",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_name_s": {
+					Name:  "details_name_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedProfileType.SetFields(gql.DocumentFieldArgs)
+	expectedProfileInstance := gql.NewSimplifiedInstance(
+		expectedProfileType,
+		map[string]interface{}{
+			"hash":           profileHash,
+			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"creator":        "dao.hypha",
+			"type":           "ProfileData",
+			"details_name_s": "User 1",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(profileDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedProfileInstance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal document, has signature fields for Votable and User interfaces, both should be added")
+	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						11,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "profile",
+					Value: []interface{}{
+						"checksum256",
+						profileHash,
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						"user2",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+				"details_profile_c": {
+					Name:  "details_profile_c",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+				"details_profile_c_edge": {
+					Name: "details_profile_c_edge",
+					Type: "ProfileData",
+				},
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable", "User"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                   assignment1Hash,
+			"createdDate":            "2020-11-12T18:27:48.000Z",
+			"creator":                "dao.hypha",
+			"type":                   "AssigProp",
+			"ballot_expiration_t":    "2020-11-15T18:27:47.000Z",
+			"ballot_votes_i":         11,
+			"details_title_s":        "Assignment 1",
+			"details_description_s":  nil,
+			"details_profile_c":      profileHash,
+			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
+			"details_account_n":      "user2",
+			"vote":                   make([]map[string]interface{}, 0),
+			"votetally":              make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+}
+
+// func TestCustomInterfacesExistingEdgeShouldUpgradeToDocumentCorrectly(t *testing.T) {
+// 	setUp("./config-with-special-config.yml")
+// 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+// 	t.Logf("Storing assignment proposal 1 document")
+// 	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment1Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment1Hash,
+// 		CreatedDate: "2020-11-12T19:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 0",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedAssignmentType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "AssigProp",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_title_s": {
+// 					Name:  "details_title_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":            assignment1Hash,
+// 			"createdDate":     "2020-11-12T19:27:47.000Z",
+// 			"creator":         "dao.hypha",
+// 			"type":            "AssigProp",
+// 			"details_title_s": "Assignment 0",
+// 		},
+// 	)
+// 	cursor := "cursor1"
+// 	err := cache.StoreDocument(assignment1Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
+// 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	voteDoc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        voteHash,
+// 		CreatedDate: "2020-11-12T18:27:48.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "result",
+// 					Value: []interface{}{
+// 						"string",
+// 						"For",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"vote",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedVoteType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "Vote",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_result_s": {
+// 					Name:  "details_result_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+// 	expectedVoteInstance := gql.NewSimplifiedInstance(
+// 		expectedVoteType,
+// 		map[string]interface{}{
+// 			"hash":             voteHash,
+// 			"createdDate":      "2020-11-12T18:27:48.000Z",
+// 			"creator":          "dao.hypha",
+// 			"type":             "Vote",
+// 			"details_result_s": "For",
+// 		},
+// 	)
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(voteDoc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedVoteInstance)
+// 	assertCursor(t, cursor)
+
+// 	t.Log("Adding vote edge")
+// 	cursor = "cursor7"
+// 	err = cache.MutateEdge(&domain.ChainEdge{
+// 		Name: "extension",
+// 		From: assignment1Hash,
+// 		To:   voteHash,
+// 	}, false, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
+// 		Name:    "extension",
+// 		Type:    "Vote",
+// 		IsArray: true,
+// 		NonNull: false,
+// 	})
+
+// 	expectedVoteEdge := []map[string]interface{}{
+// 		{"hash": voteHash},
+// 	}
+// 	expectedAssignment1Instance.SetValue("extension", expectedVoteEdge)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Extendable interface")
+// 	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment2Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment2Hash,
+// 		CreatedDate: "2020-11-12T18:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 1",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":            assignment2Hash,
+// 			"createdDate":     "2020-11-12T18:27:47.000Z",
+// 			"creator":         "dao.hypha",
+// 			"type":            "AssigProp",
+// 			"details_title_s": "Assignment 1",
+// 			"extension":       make([]map[string]interface{}, 0),
+// 		},
+// 	)
+// 	cursor = "cursor3"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment2Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing VoteOld document to be used as edge which type should be upgraded to document")
+// 	voteOldHash := "g9ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	voteOldDoc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        voteOldHash,
+// 		CreatedDate: "2020-11-12T18:27:48.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "result",
+// 					Value: []interface{}{
+// 						"string",
+// 						"For",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"vote.old",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedVoteOldType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "VoteOld",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_result_s": {
+// 					Name:  "details_result_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedVoteOldType.SetFields(gql.DocumentFieldArgs)
+// 	expectedVoteOldInstance := gql.NewSimplifiedInstance(
+// 		expectedVoteOldType,
+// 		map[string]interface{}{
+// 			"hash":             voteOldHash,
+// 			"createdDate":      "2020-11-12T18:27:48.000Z",
+// 			"creator":          "dao.hypha",
+// 			"type":             "VoteOld",
+// 			"details_result_s": "For",
+// 		},
+// 	)
+// 	cursor = "cursor2_1"
+// 	err = cache.StoreDocument(voteOldDoc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedVoteOldInstance)
+// 	assertCursor(t, cursor)
+
+// 	t.Log("Adding voteOld edge should cause extension to upgrade to document")
+// 	cursor = "cursor7"
+// 	err = cache.MutateEdge(&domain.ChainEdge{
+// 		Name: "extension",
+// 		From: assignment2Hash,
+// 		To:   voteOldHash,
+// 	}, false, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
+// 		Name:    "extension",
+// 		Type:    "Document",
+// 		IsArray: true,
+// 		NonNull: false,
+// 	})
+
+// 	expectedVoteOldEdge := []map[string]interface{}{
+// 		{"hash": voteOldHash},
+// 	}
+// 	expectedAssignment2Instance.SetValue("extension", expectedVoteOldEdge)
+// 	assertInstance(t, expectedAssignment2Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Checking assignment 1 instance is still valid")
+// 	expectedAssignment1Instance = gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":            assignment1Hash,
+// 			"createdDate":     "2020-11-12T19:27:47.000Z",
+// 			"creator":         "dao.hypha",
+// 			"type":            "AssigProp",
+// 			"details_title_s": "Assignment 0",
+// 			"extension":       []map[string]interface{}{doccache.GetEdgeValue(voteHash)},
+// 		},
+// 	)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+// }
+
+// func TestCustomInterfacesExistingEdgeShouldUpgradeToDocumentCorrectly(t *testing.T) {
+// 	setUp("./config-with-special-config.yml")
+// 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+// 	t.Logf("Storing assignment proposal 1 document")
+// 	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment1Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment1Hash,
+// 		CreatedDate: "2020-11-12T19:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 0",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedAssignmentType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "AssigProp",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_title_s": {
+// 					Name:  "details_title_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":            assignment1Hash,
+// 			"createdDate":     "2020-11-12T19:27:47.000Z",
+// 			"creator":         "dao.hypha",
+// 			"type":            "AssigProp",
+// 			"details_title_s": "Assignment 0",
+// 		},
+// 	)
+// 	cursor := "cursor1"
+// 	err := cache.StoreDocument(assignment1Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
+// 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	voteDoc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        voteHash,
+// 		CreatedDate: "2020-11-12T18:27:48.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "result",
+// 					Value: []interface{}{
+// 						"string",
+// 						"For",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"vote",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedVoteType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "Vote",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_result_s": {
+// 					Name:  "details_result_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+// 	expectedVoteInstance := gql.NewSimplifiedInstance(
+// 		expectedVoteType,
+// 		map[string]interface{}{
+// 			"hash":             voteHash,
+// 			"createdDate":      "2020-11-12T18:27:48.000Z",
+// 			"creator":          "dao.hypha",
+// 			"type":             "Vote",
+// 			"details_result_s": "For",
+// 		},
+// 	)
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(voteDoc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedVoteInstance)
+// 	assertCursor(t, cursor)
+
+// 	t.Log("Adding vote edge")
+// 	cursor = "cursor7"
+// 	err = cache.MutateEdge(&domain.ChainEdge{
+// 		Name: "extension",
+// 		From: assignment1Hash,
+// 		To:   voteHash,
+// 	}, false, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
+// 		Name:    "extension",
+// 		Type:    "Vote",
+// 		IsArray: true,
+// 		NonNull: false,
+// 	})
+
+// 	expectedVoteEdge := []map[string]interface{}{
+// 		{"hash": voteHash},
+// 	}
+// 	expectedAssignment1Instance.SetValue("extension", expectedVoteEdge)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Extendable interface")
+// 	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment2Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment2Hash,
+// 		CreatedDate: "2020-11-12T18:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "extension_name",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Vote extension",
+// 					},
+// 				},
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 1",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType = &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "AssigProp",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_title_s": {
+// 					Name:  "details_title_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 				"details_extensionName_s": {
+// 					Name:  "details_extensionName_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 				"extension": {
+// 					Name:    "extension",
+// 					Type:    "Document",
+// 					IsArray: true,
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document", "Extendable"},
+// 	}
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":                    assignment2Hash,
+// 			"createdDate":             "2020-11-12T18:27:47.000Z",
+// 			"creator":                 "dao.hypha",
+// 			"type":                    "AssigProp",
+// 			"details_title_s":         "Assignment 1",
+// 			"details_extensionName_s": "Vote extension",
+// 			"extension":               make([]map[string]interface{}, 0),
+// 		},
+// 	)
+// 	cursor = "cursor3"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment2Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Checking assignment 1 instance is still valid")
+// 	expectedAssignment1Instance = gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":                    assignment1Hash,
+// 			"createdDate":             "2020-11-12T19:27:47.000Z",
+// 			"creator":                 "dao.hypha",
+// 			"type":                    "AssigProp",
+// 			"details_title_s":         "Assignment 0",
+// 			"details_extensionName_s": nil,
+// 			"extension":               []map[string]interface{}{doccache.GetEdgeValue(voteHash)},
+// 		},
+// 	)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+// }
+
+// func TestCustomInterfacesAddingInterfaceToExistingTypeCausesExistingEdgesToBeRemoved(t *testing.T) {
+// 	setUp("./config-with-special-config.yml")
+// 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+// 	t.Logf("Storing assignment proposal 1 document")
+// 	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment1Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment1Hash,
+// 		CreatedDate: "2020-11-12T19:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 0",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedAssignmentType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "AssigProp",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_title_s": {
+// 					Name:  "details_title_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":            assignment1Hash,
+// 			"createdDate":     "2020-11-12T19:27:47.000Z",
+// 			"creator":         "dao.hypha",
+// 			"type":            "AssigProp",
+// 			"details_title_s": "Assignment 0",
+// 		},
+// 	)
+// 	cursor := "cursor1"
+// 	err := cache.StoreDocument(assignment1Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
+// 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	voteDoc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        voteHash,
+// 		CreatedDate: "2020-11-12T18:27:48.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "result",
+// 					Value: []interface{}{
+// 						"string",
+// 						"For",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"vote",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	expectedVoteType := &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "Vote",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_result_s": {
+// 					Name:  "details_result_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document"},
+// 	}
+// 	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+// 	expectedVoteInstance := gql.NewSimplifiedInstance(
+// 		expectedVoteType,
+// 		map[string]interface{}{
+// 			"hash":             voteHash,
+// 			"createdDate":      "2020-11-12T18:27:48.000Z",
+// 			"creator":          "dao.hypha",
+// 			"type":             "Vote",
+// 			"details_result_s": "For",
+// 		},
+// 	)
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(voteDoc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedVoteInstance)
+// 	assertCursor(t, cursor)
+
+// 	t.Log("Adding vote edge")
+// 	cursor = "cursor7"
+// 	err = cache.MutateEdge(&domain.ChainEdge{
+// 		Name: "extension",
+// 		From: assignment1Hash,
+// 		To:   voteHash,
+// 	}, false, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
+// 		Name:    "extension",
+// 		Type:    "Vote",
+// 		IsArray: true,
+// 		NonNull: false,
+// 	})
+
+// 	expectedVoteEdge := []map[string]interface{}{
+// 		{"hash": voteHash},
+// 	}
+// 	expectedAssignment1Instance.SetValue("extension", expectedVoteEdge)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Extendable interface")
+// 	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+// 	assignment2Doc := &domain.ChainDocument{
+// 		ID:          0,
+// 		Hash:        assignment2Hash,
+// 		CreatedDate: "2020-11-12T18:27:47.000",
+// 		Creator:     "dao.hypha",
+// 		ContentGroups: [][]*domain.ChainContent{
+// 			{
+// 				{
+// 					Label: "extension_name",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Vote extension",
+// 					},
+// 				},
+// 				{
+// 					Label: "title",
+// 					Value: []interface{}{
+// 						"string",
+// 						"Assignment 1",
+// 					},
+// 				},
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"string",
+// 						"details",
+// 					},
+// 				},
+// 			},
+// 			{
+// 				{
+// 					Label: "content_group_label",
+// 					Value: []interface{}{
+// 						"name",
+// 						"system",
+// 					},
+// 				},
+// 				{
+// 					Label: "type",
+// 					Value: []interface{}{
+// 						"name",
+// 						"assig.prop",
+// 					},
+// 				},
+// 			},
+// 		},
+// 	}
+// 	cursor = "cursor2"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+
+// 	expectedAssignmentType = &gql.SimplifiedType{
+// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
+// 			Name: "AssigProp",
+// 			Fields: map[string]*gql.SimplifiedField{
+// 				"details_title_s": {
+// 					Name:  "details_title_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 				"details_extensionName_s": {
+// 					Name:  "details_extensionName_s",
+// 					Type:  gql.GQLType_String,
+// 					Index: "regexp",
+// 				},
+// 				"extension": {
+// 					Name:    "extension",
+// 					Type:    "Vote",
+// 					IsArray: true,
+// 				},
+// 			},
+// 		},
+// 		Interfaces: []string{"Document", "Extendable"},
+// 	}
+// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+// 	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":                    assignment2Hash,
+// 			"createdDate":             "2020-11-12T18:27:47.000Z",
+// 			"creator":                 "dao.hypha",
+// 			"type":                    "AssigProp",
+// 			"details_title_s":         "Assignment 1",
+// 			"details_extensionName_s": "Vote extension",
+// 			"extension":               make([]map[string]interface{}, 0),
+// 		},
+// 	)
+// 	cursor = "cursor3"
+// 	err = cache.StoreDocument(assignment2Doc, cursor)
+// 	assert.NilError(t, err)
+// 	assertInstance(t, expectedAssignment2Instance)
+// 	assertCursor(t, cursor)
+
+// 	t.Logf("Checking assignment 1 instance is still valid")
+// 	expectedAssignment1Instance = gql.NewSimplifiedInstance(
+// 		expectedAssignmentType,
+// 		map[string]interface{}{
+// 			"hash":                    assignment1Hash,
+// 			"createdDate":             "2020-11-12T19:27:47.000Z",
+// 			"creator":                 "dao.hypha",
+// 			"type":                    "AssigProp",
+// 			"details_title_s":         "Assignment 0",
+// 			"details_extensionName_s": nil,
+// 			"extension":               []map[string]interface{}{doccache.GetEdgeValue(voteHash)},
+// 		},
+// 	)
+// 	assertInstance(t, expectedAssignment1Instance)
+// 	assertCursor(t, cursor)
+// }
+
+func TestCustomInterfacesAddingInterfaceWhenTypeIsCreated(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "extension_name",
+					Value: []interface{}{
+						"string",
+						"Vote extension 1",
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 0",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_title_s": {
+					Name:  "details_title_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"details_extensionName_s": {
+					Name:  "details_extensionName_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"extension": {
+					Name:    "extension",
+					Type:    "Vote",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Extendable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                    assignment1Hash,
+			"createdDate":             "2020-11-12T19:27:47.000Z",
+			"creator":                 "dao.hypha",
+			"type":                    "AssigProp",
+			"details_title_s":         "Assignment 0",
+			"details_extensionName_s": "Vote extension 1",
+			"extension":               make([]map[string]interface{}, 0),
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
+	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	voteDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        voteHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "result",
+					Value: []interface{}{
+						"string",
+						"For",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote",
+					},
+				},
+			},
+		},
+	}
+	expectedVoteType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Vote",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_result_s": {
+					Name:  "details_result_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+	expectedVoteInstance := gql.NewSimplifiedInstance(
+		expectedVoteType,
+		map[string]interface{}{
+			"hash":             voteHash,
+			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"creator":          "dao.hypha",
+			"type":             "Vote",
+			"details_result_s": "For",
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(voteDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedVoteInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding vote edge")
+	cursor = "cursor7"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "extension",
+		From: assignment1Hash,
+		To:   voteHash,
+	}, false, cursor)
+	assert.NilError(t, err)
+
+	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
+		Name:    "extension",
+		Type:    "Vote",
+		IsArray: true,
+		NonNull: false,
+	})
+
+	expectedVoteEdge := []map[string]interface{}{
+		{"hash": voteHash},
+	}
+	expectedAssignment1Instance.SetValue("extension", expectedVoteEdge)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Extendable interface")
+	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment2Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "extension_name",
+					Value: []interface{}{
+						"string",
+						"Vote extension",
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.NilError(t, err)
+
+	expectedAssignmentType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_title_s": {
+					Name:  "details_title_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"details_extensionName_s": {
+					Name:  "details_extensionName_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"extension": {
+					Name:    "extension",
+					Type:    "Vote",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Extendable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                    assignment2Hash,
+			"createdDate":             "2020-11-12T18:27:47.000Z",
+			"creator":                 "dao.hypha",
+			"type":                    "AssigProp",
+			"details_title_s":         "Assignment 1",
+			"details_extensionName_s": "Vote extension",
+			"extension":               make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor3"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment2Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Checking assignment 1 instance is still valid")
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+}
+
+func TestCustomInterfacesShouldFailForTypeWithoutIDField(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document without interface ID field")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						10,
+					},
+				},
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.ErrorContains(t, err, "can't add non null field")
+
+}
+
+func TestCustomInterfacesShouldFailForAddingIDFieldToExistingType(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document without interface ID field")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						10,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":           assignment1Hash,
+			"createdDate":    "2020-11-12T19:27:47.000Z",
+			"creator":        "dao.hypha",
+			"type":           "AssigProp",
+			"ballot_votes_i": 10,
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Votable interface")
+	assignment2Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment2Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.ErrorContains(t, err, "can't add non null field")
+}
+
+func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDField(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						10,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 0",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:  "details_title_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":            assignment1Hash,
+			"createdDate":     "2020-11-12T19:27:47.000Z",
+			"creator":         "dao.hypha",
+			"type":            "AssigProp",
+			"ballot_votes_i":  10,
+			"details_title_s": "Assignment 0",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Votable interface")
+	assignment2Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment2Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment2Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                  assignment2Hash,
+			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
+			"ballot_votes_i":        nil,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment2Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 3 document, does not have id field of implementing interface")
+	assignment3Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment3Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment3Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "started_at",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:28:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+
+	cursor = "cursor3"
+	err = cache.StoreDocument(assignment3Doc, cursor)
+	assert.ErrorContains(t, err, "can't add non null field")
+
+}
+
+func TestCustomInterfacesShouldFailForTypeWithExistingInvalidFieldType(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document")
+	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						10,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 0",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:  "details_title_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":            assignment1Hash,
+			"createdDate":     "2020-11-12T19:27:47.000Z",
+			"creator":         "dao.hypha",
+			"type":            "AssigProp",
+			"ballot_votes_i":  10,
+			"details_title_s": "Assignment 0",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing VoteOld document to be used as edge that is incompatible with interface")
+	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	voteDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        voteHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "result",
+					Value: []interface{}{
+						"string",
+						"For",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote.old",
+					},
+				},
+			},
+		},
+	}
+	expectedVoteType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "VoteOld",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_result_s": {
+					Name:  "details_result_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+	expectedVoteInstance := gql.NewSimplifiedInstance(
+		expectedVoteType,
+		map[string]interface{}{
+			"hash":             voteHash,
+			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"creator":          "dao.hypha",
+			"type":             "VoteOld",
+			"details_result_s": "For",
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(voteDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedVoteInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding vote edge")
+	cursor = "cursor7"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "vote",
+		From: assignment1Hash,
+		To:   voteHash,
+	}, false, cursor)
+	assert.NilError(t, err)
+
+	expectedAssignmentType.SetField("vote", &gql.SimplifiedField{
+		Name:    "vote",
+		Type:    "VoteOld",
+		IsArray: true,
+		NonNull: false,
+	})
+
+	expectedVoteEdge := []map[string]interface{}{
+		{"hash": voteHash},
+	}
+	expectedAssignment1Instance.SetValue("vote", expectedVoteEdge)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment proposal 2 document, has signature fields so it should implement Votable interface")
+	assignment2Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment2Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment2Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignment2Doc, cursor)
+	assert.ErrorContains(t, err, "failed updating local schema, error: can't update type")
+}
+
+func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assignment proposal 1 document")
+	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Doc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        assignment1Hash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "expiration",
+					Value: []interface{}{
+						"time_point",
+						"2020-11-15T18:27:47.000",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assig.prop",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignmentType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "AssigProp",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable"},
+	}
+	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignment1Instance := gql.NewSimplifiedInstance(
+		expectedAssignmentType,
+		map[string]interface{}{
+			"hash":                  assignment1Hash,
+			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignment1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignment1Instance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing VoteOld document to be used as edge that is incompatible with interface")
+	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	voteDoc := &domain.ChainDocument{
+		ID:          0,
+		Hash:        voteHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "result",
+					Value: []interface{}{
+						"string",
+						"For",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"vote.old",
+					},
+				},
+			},
+		},
+	}
+	expectedVoteType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "VoteOld",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_result_s": {
+					Name:  "details_result_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedVoteType.SetFields(gql.DocumentFieldArgs)
+	expectedVoteInstance := gql.NewSimplifiedInstance(
+		expectedVoteType,
+		map[string]interface{}{
+			"hash":             voteHash,
+			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"creator":          "dao.hypha",
+			"type":             "VoteOld",
+			"details_result_s": "For",
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(voteDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedVoteInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Adding vote edge")
+	cursor = "cursor7"
+	err = cache.MutateEdge(&domain.ChainEdge{
+		Name: "vote",
+		From: assignment1Hash,
+		To:   voteHash,
+	}, false, cursor)
+	assert.ErrorContains(t, err, "For type AssigProp to implement interface Votable the field vote must have type")
+
+}
+
 func assertCursor(t *testing.T, cursor string) {
-	expected := gql.NewCursorInstance(doccache.CursorId, cursor)
-	actual, err := cache.GetInstance(doccache.CursorId, gql.CursorSimplifiedType, nil)
+	expected := gql.NewCursorInstance(doccache.CursorIdValue, cursor)
+	actual, err := cache.GetCursorInstance(doccache.CursorIdValue, gql.CursorSimplifiedType, nil)
 	assert.NilError(t, err)
 	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
@@ -879,17 +4360,17 @@ func assertCursor(t *testing.T, cursor string) {
 func assertInstance(t *testing.T, expected *gql.SimplifiedInstance) {
 	actualType, err := cache.Schema.GetSimplifiedType(expected.SimplifiedType.Name)
 	assert.NilError(t, err)
-	actual, err := cache.GetInstance(expected.GetValue("hash"), actualType, nil)
+	actual, err := cache.GetDocumentInstance(expected.GetValue("hash"), actualType, nil)
 	assert.NilError(t, err)
-	fmt.Println("Expected: ", expected)
-	fmt.Println("Actual: ", actual)
+	// fmt.Println("Expected: ", expected)
+	// fmt.Println("Actual: ", actual)
 	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
 
 func assertInstanceNotExists(t *testing.T, hash, typeName string) {
 	actualType, err := cache.Schema.GetSimplifiedType(typeName)
 	assert.NilError(t, err)
-	actual, err := cache.GetInstance(hash, actualType, nil)
+	actual, err := cache.GetDocumentInstance(hash, actualType, nil)
 	assert.NilError(t, err)
 	assert.Assert(t, actual == nil)
 }
@@ -937,17 +4418,73 @@ func getMemberDoc(hash, account string) *domain.ChainDocument {
 	}
 }
 
+func getUserDoc(hash, account string) *domain.ChainDocument {
+	return &domain.ChainDocument{
+		ID:          1,
+		Hash:        hash,
+		CreatedDate: "2020-11-12T19:27:47.000",
+		Creator:     account,
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						account,
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"user",
+					},
+				},
+			},
+		},
+	}
+}
+
+func getUserInstance(hash, account string) *gql.SimplifiedInstance {
+	return gql.NewSimplifiedInstance(
+		userType,
+		map[string]interface{}{
+			"hash":              hash,
+			"createdDate":       "2020-11-12T19:27:47.000Z",
+			"creator":           account,
+			"type":              "User",
+			"details_account_n": account,
+		},
+	)
+}
+
 func getMemberInstance(hash, account string) *gql.SimplifiedInstance {
-	return &gql.SimplifiedInstance{
-		SimplifiedType: memberType,
-		Values: map[string]interface{}{
+	return gql.NewSimplifiedInstance(
+		memberType,
+		map[string]interface{}{
 			"hash":              hash,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
 			"type":              "Member",
 			"details_account_n": account,
 		},
-	}
+	)
 }
 
 func getPeriodDoc(hash string, number int64) *domain.ChainDocument {
@@ -994,14 +4531,14 @@ func getPeriodDoc(hash string, number int64) *domain.ChainDocument {
 }
 
 func getPeriodInstance(hash string, number int64) *gql.SimplifiedInstance {
-	return &gql.SimplifiedInstance{
-		SimplifiedType: periodType,
-		Values: map[string]interface{}{
+	return gql.NewSimplifiedInstance(
+		periodType,
+		map[string]interface{}{
 			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
 			"type":             "Period",
 			"details_number_i": number,
 		},
-	}
+	)
 }

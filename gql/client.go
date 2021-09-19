@@ -43,18 +43,40 @@ func NewClient(endpoint string) *Client {
 	}
 }
 
-func (m *Client) GetOne(id interface{}, simplifiedType *SimplifiedType, projection []string) (*SimplifiedInstance, error) {
+func (m *Client) GetOne(idName string, idValue interface{}, simplifiedType *SimplifiedType, projection []string) (*SimplifiedInstance, error) {
 
-	instances, err := m.Get([]interface{}{id}, simplifiedType, projection)
+	instances, err := m.Get(idName, []interface{}{idValue}, simplifiedType, projection)
 	if err != nil {
 		return nil, err
 	}
-	return instances[id], nil
+	return instances[idValue], nil
 }
 
-func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projection []string) (map[interface{}]*SimplifiedInstance, error) {
+func (m *Client) Get(idName string, ids []interface{}, simplifiedType *SimplifiedType, projection []string) (map[interface{}]*SimplifiedInstance, error) {
+	baseInstances, err := m.GetBaseInstances(idName, ids, simplifiedType.SimplifiedBaseType, projection)
+	if err != nil {
+		return nil, err
+	}
+	instances := make(map[interface{}]*SimplifiedInstance, len(baseInstances))
+	for id, baseInstance := range baseInstances {
+		instances[id] = NewSimplifiedInstance(simplifiedType, baseInstance.Values)
+	}
+	// fmt.Println("instances: ", instances)
+	return instances, nil
+}
 
-	id, err := simplifiedType.GetIdField()
+func (m *Client) GetOneBaseInstance(idName string, idValue interface{}, simplifiedType *SimplifiedBaseType, projection []string) (*SimplifiedBaseInstance, error) {
+
+	instances, err := m.GetBaseInstances(idName, []interface{}{idValue}, simplifiedType, projection)
+	if err != nil {
+		return nil, err
+	}
+	return instances[idValue], nil
+}
+
+func (m *Client) GetBaseInstances(idName string, ids []interface{}, simplifiedType *SimplifiedBaseType, projection []string) (map[interface{}]*SimplifiedBaseInstance, error) {
+
+	id, err := simplifiedType.GetIdField(idName)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting: %v with ids: %v error: %v", simplifiedType.Name, ids, err)
 	}
@@ -62,11 +84,11 @@ func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projecti
 	if projection != nil {
 		projection = append(projection, id.Name)
 	}
-	queryName, query, err := simplifiedType.GetStmt(projection)
+	queryName, query, err := simplifiedType.GetStmt(idName, projection)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting: %v with ids: %v error: %v", simplifiedType.Name, ids, err)
 	}
-	// fmt.Println("getting: %v with ids: %v, query:%v", simplifiedType.Name, ids, query)
+	// fmt.Printf("getting: %v with ids: %v, query:%v\n", simplifiedType.Name, ids, query)
 	req := graphql.NewRequest(query)
 	req.Var("ids", ids)
 	var response interface{}
@@ -79,14 +101,12 @@ func (m *Client) Get(ids []interface{}, simplifiedType *SimplifiedType, projecti
 	}
 	data := response.(map[string]interface{})[queryName].([]interface{})
 	// fmt.Println("Response: ", response)
-	instances := make(map[interface{}]*SimplifiedInstance, len(ids))
+	instances := make(map[interface{}]*SimplifiedBaseInstance, len(ids))
 	for _, values := range data {
 		v := values.(map[string]interface{})
-		instances[v[id.Name]] = &SimplifiedInstance{
-			SimplifiedType: simplifiedType,
-			Values:         v,
-		}
+		instances[v[id.Name]] = NewSimplifiedBaseInstance(simplifiedType, v)
 	}
+	// fmt.Println("instances: ", instances)
 	return instances, nil
 }
 

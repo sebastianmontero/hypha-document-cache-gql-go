@@ -67,7 +67,7 @@ func (m *Schema) GetSimplifiedType(name string) (*SimplifiedType, error) {
 			return nil, nil
 		}
 		var err error
-		simplifiedType, err = NewSimplifiedType(typeDef)
+		simplifiedType, err = NewSimplifiedTypeFromType(typeDef)
 		if err != nil {
 			return nil, err
 		}
@@ -83,6 +83,12 @@ func (m *Schema) GetType(name string) *ast.Definition {
 	return nil
 }
 
+func (m *Schema) SetInterface(simplifiedInterface *SimplifiedInterface) {
+	m.Schema.Types[simplifiedInterface.Name] = CreateInterface(simplifiedInterface)
+}
+
+// Shouldn't need tp worry about interfaces as they have already been applied
+// and are a superset of the old
 func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 	oldType, err := m.GetSimplifiedType(newType.Name)
 	if err != nil {
@@ -94,50 +100,70 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 		m.SimplifiedTypes[newType.Name] = newType.Clone()
 		return SchemaUpdateOp_Created, nil
 	}
-	toAdd, toUpdate, err := oldType.PrepareUpdate(newType)
+	toAdd, toUpdate, err := oldType.PrepareFieldUpdate(newType)
 	if err != nil {
 		return SchemaUpdateOp_None, err
 	}
-	if len(toAdd) == 0 && len(toUpdate) == 0 {
-		return SchemaUpdateOp_None, nil
+	newInterfaces := oldType.PrepareInterfaceUpdate(newType)
+	updateOp := SchemaUpdateOp_None
+	if len(toAdd) > 0 || len(toUpdate) > 0 {
+		fieldDefs := &m.GetType(newType.Name).Fields
+		for _, field := range toUpdate {
+			pos := findFieldPos(field.Name, *fieldDefs)
+			(*fieldDefs)[pos] = CreateField(field)
+			oldType.Fields[field.Name] = field
+		}
+		for _, field := range toAdd {
+			*fieldDefs = append(*fieldDefs, CreateField(field))
+			oldType.Fields[field.Name] = field
+		}
+		updateOp = SchemaUpdateOp_Updated
 	}
-	fieldDefs := &m.GetType(newType.Name).Fields
-	for _, field := range toUpdate {
-		pos := findFieldPos(field.Name, *fieldDefs)
-		(*fieldDefs)[pos] = CreateField(field)
-		oldType.Fields[field.Name] = field
+	if len(newInterfaces) > 0 {
+		interfaces := &m.GetType(newType.Name).Interfaces
+		*interfaces = append(*interfaces, newInterfaces...)
+		oldType.Interfaces = append(oldType.Interfaces, newInterfaces...)
+		updateOp = SchemaUpdateOp_Updated
 	}
-	for _, field := range toAdd {
-		*fieldDefs = append(*fieldDefs, CreateField(field))
-		oldType.Fields[field.Name] = field
-	}
-	// m.SimplifiedTypes[newType.Name] = newType
 	// fmt.Println("toAdd: ", toAdd)
 	// fmt.Println("toUpdate: ", toUpdate)
-	return SchemaUpdateOp_Updated, nil
+	// fmt.Println("interfaces: ", newInterfaces)
+	return updateOp, nil
 }
 
-func (m *Schema) AddEdge(typeName, edgeName, edgeType string) (bool, error) {
-	return m.AddFieldIfNotExists(typeName, NewEdgeField(edgeName, edgeType))
+func (m *Schema) UpdateEdge(typeName, edgeName, edgeType string) (bool, error) {
+	return m.UpdateField(typeName, NewEdgeField(edgeName, edgeType))
 }
 
-func (m *Schema) AddFieldIfNotExists(typeName string, field *SimplifiedField) (bool, error) {
+func (m *Schema) UpdateField(typeName string, field *SimplifiedField) (bool, error) {
 	if field.NonNull {
 		return false, fmt.Errorf("can't add non null field: %v to type: %v", field.Name, typeName)
 	}
 	typeDef := m.GetType(typeName)
 	if typeDef == nil {
-		return false, fmt.Errorf("failed to add field, type: %v not found", typeName)
+		return false, fmt.Errorf("failed to update field, definition for type: %v not found", typeName)
 	}
-	if fieldDef := typeDef.Fields.ForName(field.Name); fieldDef == nil {
-		simplifiedType, err := m.GetSimplifiedType(typeName)
-		if err != nil {
-			return false, err
-		}
-		fieldDefs := &typeDef.Fields
+	simplifiedType, err := m.GetSimplifiedType(typeName)
+	if err != nil {
+		return false, fmt.Errorf("failed to update field, simplified type: %v not found", typeName)
+	}
+	fieldDefs := &typeDef.Fields
+	currentField := simplifiedType.Fields[field.Name]
+	if currentField == nil {
 		*fieldDefs = append(*fieldDefs, CreateField(field))
 		simplifiedType.Fields[field.Name] = field
 		return true, nil
+	} else {
+		if !currentField.equal(field) {
+			err = currentField.CheckUpdate(field)
+			if err != nil {
+				return false, fmt.Errorf("can't update type: %v, error: %v", typeName, err)
+			}
+			pos := findFieldPos(field.Name, *fieldDefs)
+			(*fieldDefs)[pos] = CreateField(field)
+			simplifiedType.Fields[field.Name] = field
+			return true, nil
+		}
 	}
 	return false, nil
 }
@@ -173,18 +199,25 @@ func (m *Schema) String() string {
 
 func CreateType(simplifiedType *SimplifiedType) *ast.Definition {
 	interfaces := []string{}
+	interfaces = append(interfaces, simplifiedType.Interfaces...)
+
+	def := CreateBaseType(ast.Object, simplifiedType.SimplifiedBaseType)
+	def.Interfaces = interfaces
+	return def
+}
+
+func CreateInterface(simplifiedInterface *SimplifiedInterface) *ast.Definition {
+	return CreateBaseType(ast.Interface, simplifiedInterface.SimplifiedBaseType)
+}
+
+func CreateBaseType(kind ast.DefinitionKind, simplifiedBaseType *SimplifiedBaseType) *ast.Definition {
 	var fieldDefs ast.FieldList
-	if simplifiedType.ExtendsDocument {
-		fieldDefs = addFields(DocumentFieldArgs, fieldDefs)
-		interfaces = append(interfaces, "Document")
-	}
-	fieldDefs = addFields(simplifiedType.Fields, fieldDefs)
+	fieldDefs = addFields(simplifiedBaseType.Fields, fieldDefs)
 
 	return &ast.Definition{
-		Kind:       ast.Object,
-		Name:       simplifiedType.Name,
-		Fields:     fieldDefs,
-		Interfaces: interfaces,
+		Kind:   kind,
+		Name:   simplifiedBaseType.Name,
+		Fields: fieldDefs,
 	}
 }
 

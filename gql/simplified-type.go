@@ -10,12 +10,27 @@ import (
 type toFieldStmt func(field *SimplifiedField) string
 
 type SimplifiedType struct {
-	Name            string
-	Fields          map[string]*SimplifiedField
-	ExtendsDocument bool
+	*SimplifiedBaseType
+	Interfaces []string
 }
 
-func NewSimplifiedType(typeDef *ast.Definition) (*SimplifiedType, error) {
+func NewSimplifiedType(name string, simplifiedFields map[string]*SimplifiedField, coreInterface *SimplifiedInterface) *SimplifiedType {
+
+	simplifiedType := &SimplifiedType{
+		SimplifiedBaseType: &SimplifiedBaseType{
+			Name:   name,
+			Fields: make(map[string]*SimplifiedField),
+		},
+		Interfaces: make([]string, 0),
+	}
+	simplifiedType.SetFields(simplifiedFields)
+	if coreInterface != nil {
+		simplifiedType.addCoreInterface(coreInterface)
+	}
+	return simplifiedType
+}
+
+func NewSimplifiedTypeFromType(typeDef *ast.Definition) (*SimplifiedType, error) {
 	fields := make(map[string]*SimplifiedField)
 
 	for _, fieldDef := range typeDef.Fields {
@@ -25,12 +40,60 @@ func NewSimplifiedType(typeDef *ast.Definition) (*SimplifiedType, error) {
 		}
 		fields[field.Name] = field
 	}
+	interfaces := make([]string, len(typeDef.Interfaces))
+	copy(interfaces, typeDef.Interfaces)
+
 	return &SimplifiedType{
-		Name:            typeDef.Name,
-		Fields:          fields,
-		ExtendsDocument: ExtendsDocument(typeDef),
+		SimplifiedBaseType: &SimplifiedBaseType{
+			Name:   typeDef.Name,
+			Fields: fields,
+		},
+		Interfaces: interfaces,
 	}, nil
 }
+
+func (m *SimplifiedType) SetFields(fields map[string]*SimplifiedField) {
+	for name, field := range fields {
+		m.Fields[name] = field
+	}
+}
+
+func (m *SimplifiedType) SetFieldArray(fields []*SimplifiedField) {
+	for _, field := range fields {
+		m.Fields[field.Name] = field
+	}
+}
+
+func (m *SimplifiedType) addCoreInterface(coreInterface *SimplifiedInterface) {
+	m.Interfaces = append(m.Interfaces, coreInterface.Name)
+	m.SetFields(coreInterface.Fields)
+}
+
+func (m *SimplifiedType) AddInterface(simplifiedInterface *SimplifiedInterface) error {
+	toAdd, toUpdate, err := m.PrepareInterfaceFieldUpdate(simplifiedInterface)
+	if err != nil {
+		return fmt.Errorf("failed to apply interface, error: %v", err)
+	}
+	m.Interfaces = append(m.Interfaces, simplifiedInterface.Name)
+	m.SetFieldArray(toAdd)
+	m.SetFieldArray(toUpdate)
+	return nil
+}
+
+func (m *SimplifiedType) HasInterface(name string) bool {
+	for _, interf := range m.Interfaces {
+		if interf == name {
+			return true
+		}
+	}
+	return false
+}
+
+// func (m *SimplifiedType) AddInterfaces(simplifiedInterfaces SimplifiedInterfaces) {
+// 	for _, simplifiedInterface := range simplifiedInterfaces {
+// 		m.AddInterface(simplifiedInterface)
+// 	}
+// }
 
 func (m *SimplifiedType) Clone() *SimplifiedType {
 	fields := make(map[string]*SimplifiedField, len(m.Fields))
@@ -38,79 +101,36 @@ func (m *SimplifiedType) Clone() *SimplifiedType {
 		fields[name] = field
 	}
 	return &SimplifiedType{
-		Name:            m.Name,
-		Fields:          fields,
-		ExtendsDocument: m.ExtendsDocument,
+		SimplifiedBaseType: &SimplifiedBaseType{
+			Name:   m.Name,
+			Fields: fields,
+		},
+		Interfaces: m.CloneInterfaces(),
 	}
 }
 
-func (m *SimplifiedType) GetIdField() (*SimplifiedField, error) {
-	if m.ExtendsDocument {
-		return DocumentFieldArgs["hash"], nil
-	} else {
-		for _, field := range m.Fields {
-			if field.IsID {
-				return field, nil
-			}
+func (m *SimplifiedType) CloneInterfaces() []string {
+	interfaces := make([]string, len(m.Interfaces))
+	copy(interfaces, m.Interfaces)
+	return interfaces
+}
+
+func (m *SimplifiedType) PrepareFieldUpdate(new *SimplifiedType) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
+	return m.SimplifiedBaseType.PrepareFieldUpdate(new.SimplifiedBaseType)
+}
+
+func (m *SimplifiedType) PrepareInterfaceFieldUpdate(simplifiedInterface *SimplifiedInterface) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
+	return m.SimplifiedBaseType.PrepareFieldUpdate(simplifiedInterface.SimplifiedBaseType)
+}
+
+func (m *SimplifiedType) PrepareInterfaceUpdate(new *SimplifiedType) []string {
+	toAdd := make([]string, 0)
+	for _, interf := range new.Interfaces {
+		if !m.HasInterface(interf) {
+			toAdd = append(toAdd, interf)
 		}
 	}
-	return nil, fmt.Errorf("type: %v has no id field", m.Name)
-}
-
-func (m *SimplifiedType) GetCoreFields() []string {
-	coreFields := make([]string, 0)
-	for name, field := range m.Fields {
-		if !field.IsEdge() {
-			coreFields = append(coreFields, name)
-		}
-	}
-	return coreFields
-}
-
-func (m *SimplifiedType) GetField(name string) *SimplifiedField {
-	if field, ok := m.Fields[name]; ok {
-		return field
-	}
-	if m.ExtendsDocument {
-		return DocumentSimplifiedType.GetField(name)
-	}
-	return nil
-}
-
-func (m *SimplifiedType) SetField(name string, field *SimplifiedField) {
-	m.Fields[name] = field
-}
-
-func (m *SimplifiedType) PrepareUpdate(new *SimplifiedType) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
-	if new.ExtendsDocument && !m.ExtendsDocument {
-		err = fmt.Errorf("can't add Document interface to type: %v", m.Name)
-		return
-	}
-	if !new.ExtendsDocument && m.ExtendsDocument {
-		err = fmt.Errorf("can't remove Document interface to type: %v", m.Name)
-		return
-	}
-	toAdd = make([]*SimplifiedField, 0)
-	toUpdate = make([]*SimplifiedField, 0)
-	for _, field := range new.Fields {
-		oldField := m.GetField(field.Name)
-		if oldField == nil {
-			if field.NonNull {
-				err = fmt.Errorf("can't add non null field: %v to type: %v", field.Name, m.Name)
-				return
-			}
-			toAdd = append(toAdd, field)
-		} else {
-			if *oldField != *field {
-				err = oldField.CheckUpdate(field)
-				if err != nil {
-					err = fmt.Errorf("can't update type: %v, error: %v", m.Name, err)
-				}
-				toUpdate = append(toUpdate, field)
-			}
-		}
-	}
-	return
+	return toAdd
 }
 
 func (m *SimplifiedType) String() string {
@@ -119,43 +139,13 @@ func (m *SimplifiedType) String() string {
 			SimplifiedType: {
 				Name: %v,
 				Fields: %v,
-				ExtendsDocument: %v,
+				Interfaces: %v,
 			}		
 		`,
 		m.Name,
 		m.Fields,
-		m.ExtendsDocument,
+		m.Interfaces,
 	)
-}
-
-func (m *SimplifiedType) GetStmt(projection []string) (string, string, error) {
-
-	id, err := m.GetIdField()
-	if err != nil {
-		return "", "", err
-	}
-	queryName := fmt.Sprintf("query%v", m.Name)
-	docFields := ""
-	if m.ExtendsDocument {
-		docFields = queryFieldsStmt(DocumentFieldArgs, projection)
-	}
-	stmt := fmt.Sprintf(
-		`
-			query($ids: [%v!]!){
-				%v(filter: { %v }){
-					%v
-					%v
-				}
-			}
-		`,
-		id.Type,
-		queryName,
-		inFilterStmt(id.Name, "ids"),
-		docFields,
-		queryFieldsStmt(m.Fields, projection),
-	)
-
-	return queryName, stmt, nil
 }
 
 func (m *SimplifiedType) AddMutation(values map[string]interface{}, upsert bool) *Mutation {
@@ -204,8 +194,8 @@ func (m *SimplifiedType) nameStmt(param string) string {
 	)
 }
 
-func (m *SimplifiedType) UpdateMutation(id interface{}, set, remove map[string]interface{}) (*Mutation, error) {
-	idField, err := m.GetIdField()
+func (m *SimplifiedType) UpdateMutation(idName string, idValue interface{}, set, remove map[string]interface{}) (*Mutation, error) {
+	idField, err := m.GetIdField(idName)
 	if err != nil {
 		return nil, err
 	}
@@ -231,15 +221,15 @@ func (m *SimplifiedType) UpdateMutation(id interface{}, set, remove map[string]i
 			removeParamName,
 		),
 		Params: map[string]interface{}{
-			idParamName:     id,
+			idParamName:     idValue,
 			setParamName:    set,
 			removeParamName: remove,
 		},
 	}, nil
 }
 
-func (m *SimplifiedType) DeleteMutation(id interface{}) (*Mutation, error) {
-	idField, err := m.GetIdField()
+func (m *SimplifiedType) DeleteMutation(idName string, idValue interface{}) (*Mutation, error) {
+	idField, err := m.GetIdField(idName)
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +246,7 @@ func (m *SimplifiedType) DeleteMutation(id interface{}) (*Mutation, error) {
 			eqFilterStmt(idField.Name, idParamName),
 		),
 		Params: map[string]interface{}{
-			idParamName: id,
+			idParamName: idValue,
 		},
 	}, nil
 }

@@ -91,10 +91,10 @@ func TestToParsedDoc(t *testing.T) {
 	parsedDoc, err := chainDoc1.ToParsedDoc(make(map[string][]string))
 	assert.NilError(t, err)
 
-	expectedSimplifiedInstance := &gql.SimplifiedInstance{
-		SimplifiedType: &gql.SimplifiedType{
-			Name: "Dho",
-			Fields: map[string]*gql.SimplifiedField{
+	expectedSimplifiedInstance := gql.NewSimplifiedInstance(
+		gql.NewSimplifiedType(
+			"Dho",
+			map[string]*gql.SimplifiedField{
 				"details_rootNode_n": {
 					Name:  "details_rootNode_n",
 					Type:  "String",
@@ -126,9 +126,9 @@ func TestToParsedDoc(t *testing.T) {
 					Index: "exact",
 				},
 			},
-			ExtendsDocument: true,
-		},
-		Values: map[string]interface{}{
+			gql.DocumentSimplifiedInterface,
+		),
+		map[string]interface{}{
 			"hash":                           "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -140,7 +140,7 @@ func TestToParsedDoc(t *testing.T) {
 			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 			"system_period_c":                "f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 		},
-	}
+	)
 
 	expectedParsedDoc := &domain.ParsedDoc{
 		Instance:       expectedSimplifiedInstance,
@@ -262,10 +262,10 @@ func TestToParsedDocDeduceType(t *testing.T) {
 	parsedDoc, err := chainDoc1.ToParsedDoc(typeMappings)
 	assert.NilError(t, err)
 
-	expectedSimplifiedInstance := &gql.SimplifiedInstance{
-		SimplifiedType: &gql.SimplifiedType{
-			Name: "VoteTally",
-			Fields: map[string]*gql.SimplifiedField{
+	expectedSimplifiedInstance := gql.NewSimplifiedInstance(
+		gql.NewSimplifiedType(
+			"VoteTally",
+			map[string]*gql.SimplifiedField{
 				"pass_votePower_a": {
 					Name:  "pass_votePower_a",
 					Type:  "String",
@@ -277,9 +277,9 @@ func TestToParsedDocDeduceType(t *testing.T) {
 					Index: "term",
 				},
 			},
-			ExtendsDocument: true,
-		},
-		Values: map[string]interface{}{
+			gql.DocumentSimplifiedInterface,
+		),
+		map[string]interface{}{
 			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -287,7 +287,7 @@ func TestToParsedDocDeduceType(t *testing.T) {
 			"pass_votePower_a": "0.00 HVOICE",
 			"fail_votePower_a": "0.00 HVOICE",
 		},
-	}
+	)
 
 	expectedParsedDoc := &domain.ParsedDoc{
 		Instance:       expectedSimplifiedInstance,
@@ -387,26 +387,26 @@ func TestToParsedDocDotNamedType(t *testing.T) {
 	parsedDoc, err := chainDoc1.ToParsedDoc(typeMappings)
 	assert.NilError(t, err)
 
-	expectedSimplifiedInstance := &gql.SimplifiedInstance{
-		SimplifiedType: &gql.SimplifiedType{
-			Name: "VoteTally",
-			Fields: map[string]*gql.SimplifiedField{
+	expectedSimplifiedInstance := gql.NewSimplifiedInstance(
+		gql.NewSimplifiedType(
+			"VoteTally",
+			map[string]*gql.SimplifiedField{
 				"fail_votePower_a": {
 					Name:  "fail_votePower_a",
 					Type:  "String",
 					Index: "term",
 				},
 			},
-			ExtendsDocument: true,
-		},
-		Values: map[string]interface{}{
+			gql.DocumentSimplifiedInterface,
+		),
+		map[string]interface{}{
 			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
 			"type":             "VoteTally",
 			"fail_votePower_a": "0.00 HVOICE",
 		},
-	}
+	)
 
 	expectedParsedDoc := &domain.ParsedDoc{
 		Instance:       expectedSimplifiedInstance,

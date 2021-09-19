@@ -12,9 +12,10 @@ func TestAdd(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
 	assert.NilError(t, err)
-	assignmentType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType := gql.NewSimplifiedType(
+
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -26,12 +27,12 @@ func TestAdd(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
 	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignmentInstance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -39,7 +40,7 @@ func TestAdd(t *testing.T) {
 			"assignee":    "alice",
 			"votes":       20,
 		},
-	}
+	)
 	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
@@ -50,15 +51,16 @@ func TestAdd(t *testing.T) {
 	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 
-	personType := &gql.SimplifiedType{
-		Name: "Person",
-		Fields: map[string]*gql.SimplifiedField{
+	personType := gql.NewSimplifiedType(
+
+		"Person",
+		map[string]*gql.SimplifiedField{
 			"name": {
 				Name:    "name",
 				Type:    "String",
@@ -67,12 +69,12 @@ func TestAdd(t *testing.T) {
 			},
 			"assignments": gql.NewEdgeField("assignments", "Assignment"),
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
 	personHash := "f4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	personInstance := &gql.SimplifiedInstance{
-		SimplifiedType: personType,
-		Values: map[string]interface{}{
+	personInstance := gql.NewSimplifiedInstance(
+		personType,
+		map[string]interface{}{
 			"hash":        personHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -84,7 +86,7 @@ func TestAdd(t *testing.T) {
 				},
 			},
 		},
-	}
+	)
 	updateOp, err = schema.UpdateType(personType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
@@ -95,7 +97,7 @@ func TestAdd(t *testing.T) {
 	err = client.Mutate(personInstance.AddMutation(false))
 	assert.NilError(t, err)
 
-	actualPersonInstance, err := client.GetOne(personHash, personType, nil)
+	actualPersonInstance, err := client.GetOne("hash", personHash, personType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
@@ -103,13 +105,19 @@ func TestAdd(t *testing.T) {
 
 }
 
-func TestUpdate(t *testing.T) {
+func TestAddMultipleIDs(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
 	assert.NilError(t, err)
-	assignmentType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				NonNull: true,
+				IsID:    true,
+			},
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -121,20 +129,22 @@ func TestUpdate(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
+
 	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignmentInstance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
+			"name":        "assign1",
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
 			"type":        "assignment",
 			"assignee":    "alice",
 			"votes":       20,
 		},
-	}
+	)
 	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
@@ -145,16 +155,181 @@ func TestUpdate(t *testing.T) {
 	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
+	// Verify that each id field is independent, not composite id
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+	assignmentHash = "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951f"
+	assignmentInstance.SetValue("hash", assignmentHash)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.ErrorContains(t, err, "id assign1 already exists for field name inside type Assignment")
+
+	assignmentInstance.SetValue("name", "assign2")
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+}
+
+func TestUpdateFieldToBeID(t *testing.T) {
+	beforeEach()
+	schema, err := gql.NewSchema("", true)
+	assert.NilError(t, err)
+	assignmentType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
+			"name": {
+				Name:  "name",
+				Type:  "String",
+				Index: "term",
+			},
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"votes": {
+				Name: "votes",
+				Type: "Int64",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+
+	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
+			"hash":        assignmentHash,
+			"name":        "assign1",
+			"createdDate": "2020-11-12T18:27:47.000Z",
+			"creator":     "dao.hypha",
+			"type":        "assignment",
+			"assignee":    "alice",
+			"votes":       20,
+		},
+	)
+	updateOp, err := schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
+	// Verify that each id field is independent, not composite id
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+	assignmentHash = "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951f"
+	assignmentInstance.SetValue("hash", assignmentHash)
+	assignmentInstance.SetValue("name", "assign2")
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	assignmentType.Fields["name"] = &gql.SimplifiedField{
+
+		Name:    "name",
+		Type:    "String",
+		IsID:    true,
+		NonNull: true,
+		Index:   "term",
+	}
+
+	updateOp, err = schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, assignmentType, nil)
+	assert.NilError(t, err)
+
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+
+	actualAssignmentInstance, err = client.GetOne("name", "assign2", assignmentType, nil)
+	assert.NilError(t, err)
+
+	assertInstance(t, actualAssignmentInstance, assignmentInstance)
+
+	// currentSchema, err := admin.GetCurrentSchema()
+	// assert.NilError(t, err)
+	// aType := currentSchema.GetType("Assignment")
+	// fmt.Println(gql.DefinitionToString(aType, 0))
+	// sType, err := gql.NewSimplifiedTypeFromType(aType)
+	// assert.NilError(t, err)
+	// fmt.Println("sType: ", sType)
+
+}
+
+func TestUpdate(t *testing.T) {
+	beforeEach()
+	schema, err := gql.NewSchema("", true)
+	assert.NilError(t, err)
+	assignmentType := gql.NewSimplifiedType(
+
+		"Assignment",
+		map[string]*gql.SimplifiedField{
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"votes": {
+				Name: "votes",
+				Type: "Int64",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+
+	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
+			"hash":        assignmentHash,
+			"createdDate": "2020-11-12T18:27:47.000Z",
+			"creator":     "dao.hypha",
+			"type":        "assignment",
+			"assignee":    "alice",
+			"votes":       20,
+		},
+	)
+	updateOp, err := schema.UpdateType(assignmentType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	err = client.Mutate(assignmentInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 
 	//***Update data only
-	assignmentInstance = &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignmentInstance = gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -162,24 +337,24 @@ func TestUpdate(t *testing.T) {
 			"assignee":    "alice1",
 			"votes":       40,
 		},
-	}
+	)
 	baseAssignmentType, err := schema.GetSimplifiedType("Assignment")
 	assert.NilError(t, err)
-	mutation, err := assignmentInstance.UpdateMutation(actualAssignmentInstance)
+	mutation, err := assignmentInstance.UpdateMutation("hash", actualAssignmentInstance)
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err = client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 
 	//***Update schema and data
-	assignmentType = &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType = gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -191,11 +366,11 @@ func TestUpdate(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
-	assignmentInstance = &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+		gql.DocumentSimplifiedInterface,
+	)
+	assignmentInstance = gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -203,7 +378,7 @@ func TestUpdate(t *testing.T) {
 			"assignee":    "alice",
 			"periods":     11,
 		},
-	}
+	)
 	updateOp, err = schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
@@ -214,12 +389,12 @@ func TestUpdate(t *testing.T) {
 
 	baseAssignmentType, err = schema.GetSimplifiedType("Assignment")
 	assert.NilError(t, err)
-	mutation, err = assignmentInstance.UpdateMutation(actualAssignmentInstance)
+	mutation, err = assignmentInstance.UpdateMutation("hash", actualAssignmentInstance)
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err = client.GetOne(assignmentHash, baseAssignmentType, nil)
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, baseAssignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
@@ -231,9 +406,9 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
 	assert.NilError(t, err)
-	assignmentType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -245,11 +420,11 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
-	personType := &gql.SimplifiedType{
-		Name: "Person",
-		Fields: map[string]*gql.SimplifiedField{
+		gql.DocumentSimplifiedInterface,
+	)
+	personType := gql.NewSimplifiedType(
+		"Person",
+		map[string]*gql.SimplifiedField{
 			"name": {
 				Name:    "name",
 				Type:    "String",
@@ -257,12 +432,12 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 				Index:   "term",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
 	assignment1Hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignment1Instance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignment1Instance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignment1Hash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -270,7 +445,7 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 			"assignee":    "alice",
 			"votes":       20,
 		},
-	}
+	)
 
 	personHash := "f4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	allPersonValues := map[string]interface{}{
@@ -280,10 +455,10 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		"type":        "person",
 		"name":        "alice",
 	}
-	personInstance := &gql.SimplifiedInstance{
-		SimplifiedType: personType,
-		Values:         allPersonValues,
-	}
+	personInstance := gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
 
 	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
@@ -317,27 +492,27 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	assert.NilError(t, err)
 	_, err = admin.GetCurrentSchema()
 	assert.NilError(t, err)
-	mutation, err := personType.UpdateMutation(personHash, setPersonValues, nil)
+	mutation, err := personType.UpdateMutation("hash", personHash, setPersonValues, nil)
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualPersonInstance, err := client.GetOne(personHash, personType, nil)
+	actualPersonInstance, err := client.GetOne("hash", personHash, personType, nil)
 	assert.NilError(t, err)
 
 	allPersonValues["assignments"] = []map[string]interface{}{assignmentRef}
-	personInstance = &gql.SimplifiedInstance{
-		SimplifiedType: personType,
-		Values:         allPersonValues,
-	}
+	personInstance = gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
 
 	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
 	assertInstance(t, actualPersonInstance, personInstance)
 
 	assignment2Hash := "f4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignment2Instance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignment2Instance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignment2Hash,
 			"createdDate": "2020-11-15T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -345,7 +520,7 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 			"assignee":    "bob",
 			"votes":       30,
 		},
-	}
+	)
 	err = client.Mutate(assignment2Instance.AddMutation(false))
 	assert.NilError(t, err)
 
@@ -356,18 +531,18 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	setPersonValues = map[string]interface{}{
 		"assignments": []map[string]interface{}{assignmentRef},
 	}
-	mutation, err = personType.UpdateMutation(personHash, setPersonValues, nil)
+	mutation, err = personType.UpdateMutation("hash", personHash, setPersonValues, nil)
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualPersonInstance, err = client.GetOne(personHash, personType, nil)
+	actualPersonInstance, err = client.GetOne("hash", personHash, personType, nil)
 	assert.NilError(t, err)
 	allPersonValues["assignments"] = append(allPersonValues["assignments"].([]map[string]interface{}), assignmentRef)
-	personInstance = &gql.SimplifiedInstance{
-		SimplifiedType: personType,
-		Values:         allPersonValues,
-	}
+	personInstance = gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
 
 	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
 	assertInstance(t, actualPersonInstance, personInstance)
@@ -381,18 +556,202 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		"assignments": []map[string]interface{}{assignmentRef},
 	}
 
-	mutation, err = personType.UpdateMutation(personHash, nil, removePersonValues)
+	mutation, err = personType.UpdateMutation("hash", personHash, nil, removePersonValues)
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualPersonInstance, err = client.GetOne(personHash, personType, nil)
+	actualPersonInstance, err = client.GetOne("hash", personHash, personType, nil)
 	assert.NilError(t, err)
 
 	allPersonValues["assignments"] = allPersonValues["assignments"].([]map[string]interface{})[1:]
 
 	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
 	assertInstance(t, actualPersonInstance, personInstance)
+
+}
+
+func TestUpdateEdgeToMoreGenericType(t *testing.T) {
+	beforeEach()
+	schema, err := gql.NewSchema("", true)
+	assert.NilError(t, err)
+	assignmentType1 := gql.NewSimplifiedType(
+		"Assignment1",
+		map[string]*gql.SimplifiedField{
+			"assignee": {
+				Name:    "assignee",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+			"votes": {
+				Name: "votes",
+				Type: "Int64",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+	assignmentType2 := gql.NewSimplifiedType(
+		"Assignment2",
+		map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+
+	personType := gql.NewSimplifiedType(
+		"Person",
+		map[string]*gql.SimplifiedField{
+			"name": {
+				Name:    "name",
+				Type:    "String",
+				NonNull: true,
+				Index:   "term",
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+
+	assignment1Hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignment1Instance := gql.NewSimplifiedInstance(
+		assignmentType1,
+		map[string]interface{}{
+			"hash":        assignment1Hash,
+			"createdDate": "2020-11-12T18:27:47.000Z",
+			"creator":     "dao.hypha",
+			"type":        "assignment1",
+			"assignee":    "alice",
+			"votes":       20,
+		},
+	)
+
+	assignment2Hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951f"
+	assignment2Instance := gql.NewSimplifiedInstance(
+		assignmentType2,
+		map[string]interface{}{
+			"hash":        assignment2Hash,
+			"createdDate": "2020-10-12T18:27:47.000Z",
+			"creator":     "dao.hypha1",
+			"type":        "assignment2",
+			"name":        "assign1",
+		},
+	)
+
+	personHash := "f4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	allPersonValues := map[string]interface{}{
+		"hash":        personHash,
+		"createdDate": "2020-11-12T18:27:47.000Z",
+		"creator":     "dao.hypha",
+		"type":        "person",
+		"name":        "alice",
+	}
+	personInstance := gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
+
+	updateOp, err := schema.UpdateType(assignmentType1)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+
+	updateOp, err = schema.UpdateType(assignmentType2)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+
+	updateOp, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	err = client.Mutate(assignment1Instance.AddMutation(false))
+	assert.NilError(t, err)
+	err = client.Mutate(assignment2Instance.AddMutation(false))
+	assert.NilError(t, err)
+	err = client.Mutate(personInstance.AddMutation(false))
+	assert.NilError(t, err)
+
+	personType.Fields["assignments"] = gql.NewEdgeField("assignments", "Assignment1")
+	assignmentRef1 := map[string]interface{}{
+		"hash": assignment1Hash,
+	}
+	setPersonValues := map[string]interface{}{
+		"assignments": []map[string]interface{}{assignmentRef1},
+	}
+	// oldPerson, err = schema.GetSimplifiedType("Person")
+	// assert.NilError(t, err)
+	// if reflect.ValueOf(oldPerson.Fields).Pointer() == reflect.ValueOf(personType.Fields).Pointer() {
+	// 	fmt.Println("Same before update type 1")
+	// } else {
+	// 	fmt.Println("Different before update type 1")
+	// }
+	updateOp, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	_, err = admin.GetCurrentSchema()
+	assert.NilError(t, err)
+	mutation, err := personType.UpdateMutation("hash", personHash, setPersonValues, nil)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
+	assert.NilError(t, err)
+
+	actualPersonInstance, err := client.GetOne("hash", personHash, personType, nil)
+	assert.NilError(t, err)
+
+	allPersonValues["assignments"] = []map[string]interface{}{assignmentRef1}
+	personInstance = gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
+
+	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
+	assertInstance(t, actualPersonInstance, personInstance)
+	personType.Fields["assignments"] = gql.NewEdgeField("assignments", "Document")
+	assignmentRef2 := map[string]interface{}{
+		"hash": assignment2Hash,
+	}
+	setPersonValues = map[string]interface{}{
+		"assignments": []map[string]interface{}{assignmentRef2},
+	}
+	updateOp, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
+	// fmt.Println("Schema: ", schema.String())
+	err = admin.UpdateSchema(schema)
+	assert.NilError(t, err)
+	_, err = admin.GetCurrentSchema()
+	assert.NilError(t, err)
+	mutation, err = personType.UpdateMutation("hash", personHash, setPersonValues, nil)
+	assert.NilError(t, err)
+	err = client.Mutate(mutation)
+	assert.NilError(t, err)
+
+	actualPersonInstance, err = client.GetOne("hash", personHash, personType, nil)
+	assert.NilError(t, err)
+
+	allPersonValues["assignments"] = []map[string]interface{}{assignmentRef1, assignmentRef2}
+	personInstance = gql.NewSimplifiedInstance(
+		personType,
+		allPersonValues,
+	)
+
+	// fmt.Println("Actual Person Instance: ", actualPersonInstance)
+	assertInstance(t, actualPersonInstance, personInstance)
+
+	//Shouldn't update for no changes
+	updateOp, err = schema.UpdateType(personType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_None)
 
 }
 
@@ -442,9 +801,9 @@ func TestDelete(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
 	assert.NilError(t, err)
-	assignmentType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -456,12 +815,13 @@ func TestDelete(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
+
 	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignmentInstance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -469,7 +829,7 @@ func TestDelete(t *testing.T) {
 			"assignee":    "alice",
 			"votes":       20,
 		},
-	}
+	)
 	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
@@ -480,18 +840,18 @@ func TestDelete(t *testing.T) {
 	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 
-	mutation, err := assignmentInstance.DeleteMutation()
+	mutation, err := assignmentInstance.DeleteMutation("hash")
 	assert.NilError(t, err)
 	err = client.Mutate(mutation)
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err = client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err = client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 	assert.Assert(t, actualAssignmentInstance == nil)
 
@@ -501,9 +861,9 @@ func TestMultipleMutations(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
 	assert.NilError(t, err)
-	assignmentType := &gql.SimplifiedType{
-		Name: "Assignment",
-		Fields: map[string]*gql.SimplifiedField{
+	assignmentType := gql.NewSimplifiedType(
+		"Assignment",
+		map[string]*gql.SimplifiedField{
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
@@ -515,12 +875,13 @@ func TestMultipleMutations(t *testing.T) {
 				Type: "Int64",
 			},
 		},
-		ExtendsDocument: true,
-	}
+		gql.DocumentSimplifiedInterface,
+	)
+
 	assignmentHash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	assignmentInstance := &gql.SimplifiedInstance{
-		SimplifiedType: assignmentType,
-		Values: map[string]interface{}{
+	assignmentInstance := gql.NewSimplifiedInstance(
+		assignmentType,
+		map[string]interface{}{
 			"hash":        assignmentHash,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -528,7 +889,7 @@ func TestMultipleMutations(t *testing.T) {
 			"assignee":    "alice",
 			"votes":       20,
 		},
-	}
+	)
 	updateOp, err := schema.UpdateType(assignmentType)
 	assert.NilError(t, err)
 	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
@@ -546,13 +907,13 @@ func TestMultipleMutations(t *testing.T) {
 	)
 	assert.NilError(t, err)
 
-	actualAssignmentInstance, err := client.GetOne(assignmentHash, assignmentType, nil)
+	actualAssignmentInstance, err := client.GetOne("hash", assignmentHash, assignmentType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 
-	actualCursorInstance, err := client.GetOne(cursorId, gql.CursorSimplifiedType, nil)
+	actualCursorInstance, err := client.GetOne("id", cursorId, gql.CursorSimplifiedType, nil)
 	assert.NilError(t, err)
 
 	// fmt.Println("Actual Instance: ", actualAssignmentInstance)

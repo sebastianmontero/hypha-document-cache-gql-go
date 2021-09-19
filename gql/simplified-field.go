@@ -49,6 +49,17 @@ func NewEdgeField(edgeName, edgeType string) *SimplifiedField {
 	}
 }
 
+func (m *SimplifiedField) Clone() *SimplifiedField {
+	return &SimplifiedField{
+		IsID:    m.IsID,
+		Name:    m.Name,
+		Type:    m.Type,
+		NonNull: m.NonNull,
+		Index:   m.Index,
+		IsArray: m.IsArray,
+	}
+}
+
 func (m *SimplifiedField) IsObject() bool {
 	return m.Type != GQLType_Int64 && m.Type != GQLType_String && m.Type != GQLType_Time && m.Type != GQLType_ID
 }
@@ -61,14 +72,18 @@ func (m *SimplifiedField) IsEdge() bool {
 	return m.IsArray && m.IsObject()
 }
 
+func (m *SimplifiedField) equal(field *SimplifiedField) bool {
+	return *m == *field
+}
+
 func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 
-	if new.IsID != m.IsID {
-		return fmt.Errorf("can't change id definition for field: %v", new.Name)
-	}
-	if new.NonNull && !m.NonNull {
-		return fmt.Errorf("can't make nullable field: %v, not nullable", new.Name)
-	}
+	// if new.IsID != m.IsID {
+	// 	return fmt.Errorf("can't change id definition for field: %v", new.Name)
+	// }
+	// if new.NonNull && !m.NonNull {
+	// 	return fmt.Errorf("can't make nullable field: %v, not nullable", new.Name)
+	// }
 	if new.IsArray && !m.IsArray {
 		return fmt.Errorf("can't make scalar field: %v an array", new.Name)
 	}
@@ -80,9 +95,15 @@ func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 		if new.IsArray {
 			cardinality = "array"
 		}
+		if m.IsObject() {
+			if new.Type == DocumentSimplifiedInterface.Name {
+				return nil
+			}
+		}
 		// if new.Type == GQLType_Int64 && m.Type == GQLType_String {
 		// 	return nil
 		// }
+
 		return fmt.Errorf("can't make %v field: %v of type: %v, %v of type: %v", cardinality, new.Name, m.Type, cardinality, new.Type)
 	}
 	return nil

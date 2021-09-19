@@ -1,0 +1,12 @@
+contract-name: dao.hypha
+doc-table-name: documents
+edge-table-name: edges
+firehose-endpoint: localhost:9000
+eos-endpoint: https://telos.caleos.io
+dgraph-alpha-host: localhost
+dgraph-alpha-grpc-port: 9080
+dgraph-alpha-http-port: 8080 
+prometheus-port: 2114
+start-block: 136860100
+heart-beat-frequency: 100
+dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d

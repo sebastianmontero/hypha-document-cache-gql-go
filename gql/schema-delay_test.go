@@ -3,41 +3,38 @@ package gql_test
 import (
 	"context"
 	"fmt"
-	"strings"
-	"testing"
 
 	"github.com/machinebox/graphql"
-	"gotest.tools/assert"
 )
 
-func TestUpdateSchemaDelay(t *testing.T) {
-	cl := graphql.NewClient("http://localhost:8080/admin")
+// func TestUpdateSchemaDelay(t *testing.T) {
+// 	cl := graphql.NewClient("http://localhost:8080/admin")
 
-	schemaDef := generateTypes(1, 2000)
+// 	schemaDef := generateTypes(1, 2000)
 
-	fmt.Println("Updating schema...")
-	err := UpdateSchema(cl, schemaDef)
-	assert.NilError(t, err)
+// 	fmt.Println("Updating schema...")
+// 	err := UpdateSchema(cl, schemaDef)
+// 	assert.NilError(t, err)
 
-	fmt.Println("Getting schema...")
-	generatedSchema, err := GetCurrentSchema(cl)
-	assert.NilError(t, err)
+// 	fmt.Println("Getting schema...")
+// 	generatedSchema, err := GetCurrentSchema(cl)
+// 	assert.NilError(t, err)
+// 	fmt.Println("Schema: ", generatedSchema)
+// 	assert.Assert(t, strings.Contains(generatedSchema, "updatePerson2000"))
 
-	assert.Assert(t, strings.Contains(generatedSchema, "updatePerson2000"))
+// 	schemaDef += generateTypes(2001, 2000)
+// 	assert.Assert(t, strings.Contains(schemaDef, "Person4000"))
+// 	fmt.Println("Updating schema...")
+// 	err = UpdateSchema(cl, schemaDef)
+// 	assert.NilError(t, err)
 
-	schemaDef += generateTypes(2001, 2000)
-	assert.Assert(t, strings.Contains(schemaDef, "Person4000"))
-	fmt.Println("Updating schema...")
-	err = UpdateSchema(cl, schemaDef)
-	assert.NilError(t, err)
+// 	fmt.Println("Getting schema...")
+// 	generatedSchema, err = GetCurrentSchema(cl)
+// 	assert.NilError(t, err)
 
-	fmt.Println("Getting schema...")
-	generatedSchema, err = GetCurrentSchema(cl)
-	assert.NilError(t, err)
+// 	assert.Assert(t, strings.Contains(generatedSchema, "updatePerson4000"))
 
-	assert.Assert(t, strings.Contains(generatedSchema, "updatePerson4000"))
-
-}
+// }
 
 func generateTypes(start, count int) string {
 	schemaDef := ""

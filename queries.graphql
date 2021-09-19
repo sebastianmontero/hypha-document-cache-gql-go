@@ -1,0 +1,31 @@
+# Write your query or mutation here
+{
+  queryAssignment(first:10, offset:0, filter:{creator:{eq:"leonieherma1"}}, order:{desc:createdDate}){
+    hash
+    creator
+    details_description_s
+    details_husdSalaryPerPhase_a
+    details_hyphaSalaryPerPhase_a
+    details_hvoiceSalaryPerPhase_a
+    details_startPeriod_c_edge {
+      hash
+      details_startTime_t
+      details_label_s
+    }
+    details_owner_n
+    details_assignee_n
+    details_periodCount_i
+    details_role_c_edge {
+      hash
+      details_title_s
+    }
+    votetally {
+      hash
+      ... on VoteTally{
+        pass_votePower_a
+        fail_votePower_a
+        abstain_votePower_a
+      }
+    }
+  }
+}

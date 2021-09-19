@@ -64,25 +64,29 @@ const BaseSchema = `
 	
 `
 
-var DocumentSimplifiedType = &SimplifiedType{
-	Name:   "Document",
-	Fields: DocumentFieldArgs,
+var DocumentSimplifiedInterface = &SimplifiedInterface{
+	SimplifiedBaseType: &SimplifiedBaseType{
+		Name:   "Document",
+		Fields: DocumentFieldArgs,
+	},
 }
 
 var CursorSimplifiedType = &SimplifiedType{
-	Name: "Cursor",
-	Fields: map[string]*SimplifiedField{
-		"id": {
-			Name:    "id",
-			IsID:    true,
-			Type:    "String",
-			Index:   "exact",
-			NonNull: true,
-		},
-		"cursor": {
-			Name:    "cursor",
-			Type:    "String",
-			NonNull: true,
+	SimplifiedBaseType: &SimplifiedBaseType{
+		Name: "Cursor",
+		Fields: map[string]*SimplifiedField{
+			"id": {
+				Name:    "id",
+				IsID:    true,
+				Type:    "String",
+				Index:   "exact",
+				NonNull: true,
+			},
+			"cursor": {
+				Name:    "cursor",
+				Type:    "String",
+				NonNull: true,
+			},
 		},
 	},
 }
@@ -93,11 +97,11 @@ var BaseSchemaSource = &ast.Source{
 }
 
 func NewCursorInstance(id, cursor string) *SimplifiedInstance {
-	return &SimplifiedInstance{
-		SimplifiedType: CursorSimplifiedType,
-		Values: map[string]interface{}{
+	return NewSimplifiedInstance(
+		CursorSimplifiedType,
+		map[string]interface{}{
 			"id":     id,
 			"cursor": cursor,
 		},
-	}
+	)
 }

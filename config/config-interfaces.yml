@@ -10,13 +10,6 @@ prometheus-port: 2114
 start-block: 136860100
 heart-beat-frequency: 100
 dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-type-mappings:
-  - type: vote.tally
-    labels:
-      pass:
-        - vote_power
-      fail:
-        - vote_power
 custom-interfaces:
   - name: Votable #New type so use name to use in GQL
     fields:
@@ -27,16 +20,23 @@ custom-interfaces:
       - content-group: details
         name: title
         type: string
+        is-id: true
       - content-group: details
         name: description
         type: string
+      - content-group: system
+        name: hash
+        type: checksum256
       - name: vote
         type: vote
       - name: votetally
         type: vote.tally
-logical-ids:
-  - type: member #Existing type use name from orginal chain doc
-    ids:
+  - name: User
+    fields:
       - content-group: details
-        name: member
+        name: profile
+        type: profile.data
+        signature: true
+      - name: member_name
         type: name
+        signature: true # used to identify votable types

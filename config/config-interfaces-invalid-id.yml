@@ -10,10 +10,12 @@ prometheus-port: 2114
 start-block: 136860100
 heart-beat-frequency: 100
 dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-type-mappings:
-- type: VoteTally
-  labels:
-    pass:
-      - vote_power
-    fail:
-      - vote_power
+custom-interfaces:
+  - name: User
+    fields:
+      - content-group: details
+        name: profile
+        type: profile.data
+        is-id: true
+      - name: member_name
+        type: name
