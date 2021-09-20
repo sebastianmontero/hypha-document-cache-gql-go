@@ -204,58 +204,6 @@ func TestAddTypeWithMultipleInterfaces(t *testing.T) {
 	util.AssertType(t, assignmentType, currentSchema)
 }
 
-func TestUpdateTypeWithNewInterface(t *testing.T) {
-
-	schema, err := gql.NewSchema("", false)
-	assert.NilError(t, err)
-	schema.SetInterface(gql.DocumentSimplifiedInterface)
-	// fmt.Println(gql.DefinitionToString(person, 0))
-	// fmt.Println("Schema: ", currentSchema)
-
-	//***Add Type programatically***
-	assignmentType := gql.NewSimplifiedType(
-		"Assignment",
-		map[string]*gql.SimplifiedField{
-			"assignee": {
-				Name:    "assignee",
-				Type:    "String",
-				NonNull: true,
-				Index:   "term",
-			},
-		},
-		gql.DocumentSimplifiedInterface,
-	)
-
-	updateOp, err := schema.UpdateType(assignmentType)
-	assert.NilError(t, err)
-	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
-	// fmt.Println("Schema: ", schema.String())
-
-	err = admin.UpdateSchema(schema)
-	assert.NilError(t, err)
-	currentSchema, err := admin.GetCurrentSchema()
-	assert.NilError(t, err)
-	util.AssertInterface(t, gql.DocumentSimplifiedInterface, currentSchema)
-	util.AssertType(t, assignmentType, currentSchema)
-
-	votableInterface := GetVotableInterface()
-	schema.SetInterface(votableInterface)
-
-	assignmentType.Interfaces = append(assignmentType.Interfaces, "Votable")
-	assignmentType.SetFields(votableInterface.Fields)
-	updateOp, err = schema.UpdateType(assignmentType)
-	assert.NilError(t, err)
-	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Updated)
-
-	err = admin.UpdateSchema(schema)
-	assert.NilError(t, err)
-	currentSchema, err = admin.GetCurrentSchema()
-	assert.NilError(t, err)
-	util.AssertInterface(t, gql.DocumentSimplifiedInterface, currentSchema)
-	util.AssertInterface(t, votableInterface, currentSchema)
-	util.AssertType(t, assignmentType, currentSchema)
-}
-
 func TestUpdateType(t *testing.T) {
 	schemaDef :=
 		`

@@ -52,7 +52,15 @@ custom-interfaces:
         type: string
         signature: true
       - name: extension
-        type: vote
+        type: document
+  - name: Taskable #New type so use name to use in GQL
+    fields:
+      - content-group: details
+        name: task
+        type: string
+        signature: true
+      - name: user
+        type: user
 logical-ids:
   - type: member #Existing type use name from orginal chain doc
     ids:

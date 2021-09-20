@@ -88,7 +88,7 @@ func (m *Schema) SetInterface(simplifiedInterface *SimplifiedInterface) {
 }
 
 // Shouldn't need tp worry about interfaces as they have already been applied
-// and are a superset of the old
+// should be same as old in case its not a new type
 func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 	oldType, err := m.GetSimplifiedType(newType.Name)
 	if err != nil {
@@ -104,7 +104,6 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 	if err != nil {
 		return SchemaUpdateOp_None, err
 	}
-	newInterfaces := oldType.PrepareInterfaceUpdate(newType)
 	updateOp := SchemaUpdateOp_None
 	if len(toAdd) > 0 || len(toUpdate) > 0 {
 		fieldDefs := &m.GetType(newType.Name).Fields
@@ -117,12 +116,6 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 			*fieldDefs = append(*fieldDefs, CreateField(field))
 			oldType.Fields[field.Name] = field
 		}
-		updateOp = SchemaUpdateOp_Updated
-	}
-	if len(newInterfaces) > 0 {
-		interfaces := &m.GetType(newType.Name).Interfaces
-		*interfaces = append(*interfaces, newInterfaces...)
-		oldType.Interfaces = append(oldType.Interfaces, newInterfaces...)
 		updateOp = SchemaUpdateOp_Updated
 	}
 	// fmt.Println("toAdd: ", toAdd)

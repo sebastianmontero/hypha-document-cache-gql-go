@@ -18,18 +18,26 @@ func (m SimplifiedInterfaces) HasInterface(name string) bool {
 }
 
 func (m SimplifiedInterfaces) ApplyInterfaces(newType, oldType *SimplifiedType) error {
-	for name, interf := range m {
-		if oldType != nil {
-			if oldType.HasInterface(name) {
-				err := newType.AddInterface(interf)
-				if err != nil {
-					return err
-				}
-				continue
-			}
-		}
+
+	if oldType != nil {
+		return m.applyOldTypeInterfaces(newType, oldType)
+	}
+	for _, interf := range m {
 		if interf.ShouldImplement(newType) {
 			err := newType.AddInterface(interf)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (m SimplifiedInterfaces) applyOldTypeInterfaces(newType, oldType *SimplifiedType) error {
+
+	for _, name := range oldType.Interfaces {
+		if m.HasInterface(name) { //To filter Document interface
+			err := newType.AddInterface(m[name])
 			if err != nil {
 				return err
 			}
@@ -42,7 +50,7 @@ func (m SimplifiedInterfaces) GetObjectTypeFields(name string) []*SimplifiedFiel
 	objFields := make([]*SimplifiedField, 0)
 	fields := m[name].GetObjectFields()
 	for _, field := range fields {
-		if !m.HasInterface(field.Name) {
+		if !m.HasInterface(field.Type) {
 			objFields = append(objFields, field)
 		}
 	}

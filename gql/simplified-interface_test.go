@@ -107,6 +107,44 @@ func TestApplyInterfacesSingleSignatureField(t *testing.T) {
 	util.AssertSimplifiedType(t, memberType, expectedMemberType)
 }
 
+func TestApplyInterfacesTypeReferencingInterface(t *testing.T) {
+	interfaces := getMockInterfaces()
+	var taskType = gql.NewSimplifiedType(
+		"Task",
+		map[string]*gql.SimplifiedField{
+			"details_task_s": {
+				Name:  "details_task_s",
+				Type:  gql.GQLType_String,
+				Index: "regexp",
+			},
+		},
+		nil,
+	)
+
+	err := interfaces.ApplyInterfaces(taskType, nil)
+	assert.NilError(t, err)
+
+	expectedTaskType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Task",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_task_s": {
+					Name:  "details_task_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"user": {
+					Name:    "user",
+					Type:    "User",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Taskable"},
+	}
+	util.AssertSimplifiedType(t, taskType, expectedTaskType)
+}
+
 func TestApplyInterfacesMultipleSignatureFields(t *testing.T) {
 	interfaces := getMockInterfaces()
 	var badgeType = gql.NewSimplifiedType(
@@ -285,7 +323,7 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 	util.AssertSimplifiedType(t, memberProposalType, expectedMemberProposalType)
 }
 
-func TestApplyInterfacesAddInterfaceToOldType(t *testing.T) {
+func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 	interfaces := getMockInterfaces()
 
 	var oldMemberProposalType = gql.NewSimplifiedType(
@@ -323,11 +361,6 @@ func TestApplyInterfacesAddInterfaceToOldType(t *testing.T) {
 		SimplifiedBaseType: &gql.SimplifiedBaseType{
 			Name: "MemberProposal",
 			Fields: map[string]*gql.SimplifiedField{
-				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
-				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
@@ -339,12 +372,11 @@ func TestApplyInterfacesAddInterfaceToOldType(t *testing.T) {
 				},
 			},
 		},
-		Interfaces: []string{"User"},
 	}
 	util.AssertSimplifiedType(t, memberProposalType, expectedMemberProposalType)
 }
 
-func TestApplyInterfacesBasedOnOldTypeAndSignatureFields(t *testing.T) {
+func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *testing.T) {
 	interfaces := getMockInterfaces()
 
 	var oldMemberProposalType = gql.NewSimplifiedType(
@@ -434,11 +466,6 @@ func TestApplyInterfacesBasedOnOldTypeAndSignatureFields(t *testing.T) {
 					Type:    "Document",
 					IsArray: true,
 				},
-				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
-				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
@@ -450,7 +477,7 @@ func TestApplyInterfacesBasedOnOldTypeAndSignatureFields(t *testing.T) {
 				},
 			},
 		},
-		Interfaces: []string{"Votable", "User"},
+		Interfaces: []string{"Votable"},
 	}
 	util.AssertSimplifiedType(t, memberProposalType, expectedMemberProposalType)
 }
@@ -560,6 +587,37 @@ func TestApplyInterfacesShouldFailForIncompatibleTypes(t *testing.T) {
 
 }
 
+func TestGetObjectTypeFields(t *testing.T) {
+	interfaces := getMockInterfaces()
+	actual := interfaces.GetObjectTypeFields("Votable")
+	expected := []*gql.SimplifiedField{
+		{
+			Name:    "vote",
+			Type:    "Vote",
+			IsArray: true,
+		},
+		{
+			Name:    "votetally",
+			Type:    "Document",
+			IsArray: true,
+		},
+	}
+	assertSimplifiedFieldArray(t, actual, expected)
+
+	actual = interfaces.GetObjectTypeFields("User")
+	expected = []*gql.SimplifiedField{
+		{
+			Name: "details_profile_c_edge",
+			Type: "ProfileData",
+		},
+	}
+	assertSimplifiedFieldArray(t, actual, expected)
+
+	actual = interfaces.GetObjectTypeFields("Taskable")
+	expected = make([]*gql.SimplifiedField, 0)
+	assertSimplifiedFieldArray(t, actual, expected)
+}
+
 func getMockInterfaces() gql.SimplifiedInterfaces {
 	interfaces := gql.NewSimplifiedInterfaces()
 	interfaces.Put(
@@ -622,5 +680,39 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 				"memberName",
 			},
 		))
+	interfaces.Put(
+		gql.NewSimplifiedInterface(
+			"Taskable",
+			map[string]*gql.SimplifiedField{
+				"details_task_s": {
+					Name:  "details_task_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"user": {
+					Name:    "user",
+					Type:    "User",
+					IsArray: true,
+				},
+			},
+			[]string{
+				"details_task_s",
+			},
+		))
 	return interfaces
+}
+
+func assertSimplifiedFieldArray(t *testing.T, actual, expected []*gql.SimplifiedField) {
+	assert.Equal(t, len(actual), len(expected), "Different number of fields actual: %v expected %v", actual, expected)
+	actualMap := make(map[string]*gql.SimplifiedField, len(actual))
+	for _, aField := range actual {
+		actualMap[aField.Name] = aField
+	}
+	for _, eField := range expected {
+		if aField, ok := actualMap[eField.Name]; ok {
+			util.AssertSimplifiedField(t, aField, eField)
+		} else {
+			assert.Assert(t, false, "Expected field: %v not found", eField.Name)
+		}
+	}
 }
