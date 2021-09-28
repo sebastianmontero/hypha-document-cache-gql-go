@@ -299,7 +299,7 @@ func queryFieldsStmt(fields map[string]*SimplifiedField, projection []string) st
 
 func queryFieldStmt(field *SimplifiedField) string {
 	if field.IsObject() {
-		return fmt.Sprintf("%v{hash}", field.Name)
+		return fmt.Sprintf("%v{docId}", field.Name)
 	} else {
 		return fmt.Sprintf("%v", field.Name)
 	}

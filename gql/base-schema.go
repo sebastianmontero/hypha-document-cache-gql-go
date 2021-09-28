@@ -5,6 +5,19 @@ import (
 )
 
 var DocumentFieldArgs = map[string]*SimplifiedField{
+	"docId": {
+		IsID:    true,
+		Name:    "docId",
+		Type:    "String",
+		NonNull: true,
+		Index:   "exact",
+	},
+	"docId_i": {
+		Name:    "docId_i",
+		Type:    GQLType_Int64,
+		NonNull: true,
+		Index:   "int64",
+	},
 	"hash": {
 		IsID:    true,
 		Name:    "hash",
@@ -33,6 +46,8 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 }
 
 const DocumentFields = `
+		docId: String! @id @search(by: [exact])
+		docId_i: Int64! @search(by: [int64])
 		hash: String! @id @search(by: [exact])
 		type: String! @search(by: [exact])
 		creator: String! @search(by: [exact])

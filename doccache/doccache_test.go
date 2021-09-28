@@ -3,6 +3,7 @@ package doccache_test
 import (
 	"log"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -102,9 +103,11 @@ func TestOpCycle(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing period 1 document")
+	period1Id := "21"
+	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
 	period1Hash := "h4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	periodDoc := getPeriodDoc(period1Hash, 1)
-	expectedPeriodInstance := getPeriodInstance(period1Hash, 1)
+	periodDoc := getPeriodDoc(period1IdI, period1Hash, 1)
+	expectedPeriodInstance := getPeriodInstance(period1IdI, period1Hash, 1)
 
 	cursor := "cursor0"
 	err := cache.StoreDocument(periodDoc, cursor)
@@ -113,9 +116,11 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing dho document")
+	dhoId := "2"
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
 	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -232,6 +237,8 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance := gql.NewSimplifiedInstance(
 		expectedDhoType,
 		map[string]interface{}{
+			"docId":                          dhoId,
+			"docId_i":                        dhoIdI,
 			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -241,7 +248,7 @@ func TestOpCycle(t *testing.T) {
 			"details_timeShareX100_i":        int64(60),
 			"details_strToInt_s":             "60",
 			"details_startPeriod_c":          period1Hash,
-			"details_startPeriod_c_edge":     doccache.GetEdgeValue(period1Hash),
+			"details_startPeriod_c_edge":     doccache.GetEdgeValue(period1Id),
 			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 		},
 	)
@@ -252,9 +259,11 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing member document")
+	member1Id := "31"
+	member1IdI, _ := strconv.ParseUint(member1Id, 10, 64)
 	member1Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	memberDoc := getMemberDoc(member1Hash, "member1")
-	expectedMemberInstance := getMemberInstance(member1Hash, "member1")
+	memberDoc := getMemberDoc(member1IdI, member1Hash, "member1")
+	expectedMemberInstance := getMemberInstance(member1IdI, member1Hash, "member1")
 	cursor = "cursor2_1"
 
 	err = cache.StoreDocument(memberDoc, cursor)
@@ -263,9 +272,11 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing another member document")
+	member2Id := "32"
+	member2IdI, _ := strconv.ParseUint(member2Id, 10, 64)
 	member2Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	memberDoc = getMemberDoc(member2Hash, "member2")
-	expectedMemberInstance = getMemberInstance(member2Hash, "member2")
+	memberDoc = getMemberDoc(member2IdI, member2Hash, "member2")
+	expectedMemberInstance = getMemberInstance(member2IdI, member2Hash, "member2")
 	cursor = "cursor2_2"
 
 	err = cache.StoreDocument(memberDoc, cursor)
@@ -274,9 +285,11 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing user document")
+	user1Id := "41"
+	user1IdI, _ := strconv.ParseUint(user1Id, 10, 64)
 	user1Hash := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	userDoc := getUserDoc(user1Hash, "user1")
-	expectedUserInstance := getUserInstance(user1Hash, "user1")
+	userDoc := getUserDoc(user1IdI, user1Hash, "user1")
+	expectedUserInstance := getUserInstance(user1IdI, user1Hash, "user1")
 	cursor = "cursor3"
 
 	err = cache.StoreDocument(userDoc, cursor)
@@ -300,7 +313,7 @@ func TestOpCycle(t *testing.T) {
 		NonNull: false,
 	})
 	expectedMemberEdge := []map[string]interface{}{
-		{"hash": member1Hash},
+		{"docId": member1Id},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
@@ -316,8 +329,8 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
-		{"hash": member1Hash},
-		{"hash": member2Hash},
+		{"docId": member1Id},
+		{"docId": member2Id},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
@@ -340,18 +353,20 @@ func TestOpCycle(t *testing.T) {
 	})
 
 	expectedMemberEdge = []map[string]interface{}{
-		{"hash": member1Hash},
-		{"hash": member2Hash},
-		{"hash": user1Hash},
+		{"docId": member1Id},
+		{"docId": member2Id},
+		{"docId": user1Id},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
 	t.Logf("Storing period 2 document")
+	period2Id := "22"
+	period2IdI, _ := strconv.ParseUint(period2Id, 10, 64)
 	period2Hash := "i4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	periodDoc = getPeriodDoc(period2Hash, 2)
-	expectedPeriodInstance = getPeriodInstance(period2Hash, 2)
+	periodDoc = getPeriodDoc(period2IdI, period2Hash, 2)
+	expectedPeriodInstance = getPeriodInstance(period2IdI, period2Hash, 2)
 
 	cursor = "cursorA"
 	err = cache.StoreDocument(periodDoc, cursor)
@@ -361,7 +376,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Update DHO document: Update values, add coreedge, remove core field")
 	dhoDoc = &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -481,7 +496,7 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance.SetValue("system_originalApprovedDate_t", "2021-05-12T05:09:36.5Z")
 	expectedDHOInstance.SetValue("details_hvoiceSalaryPerPhase_a", "4233.04 HVOICE")
 	expectedDHOInstance.SetValue("system_endPeriod_c", period2Hash)
-	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period2Hash))
+	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period2Id))
 
 	cursor = "cursor6"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -499,15 +514,15 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
-		{"hash": member2Hash},
-		{"hash": user1Hash},
+		{"docId": member2Id},
+		{"docId": user1Id},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
 
 	t.Log("Update 2 DHO document: remove core edge")
 	dhoDoc = &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -601,7 +616,7 @@ func TestOpCycle(t *testing.T) {
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
-		{"hash": member2Hash},
+		{"docId": member2Id},
 	}
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
@@ -619,8 +634,17 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
 
+	t.Logf("Deleting user1 document")
+	userDoc = getUserDoc(user1IdI, user1Hash, "user1")
+	cursor = "cursor8_1"
+
+	err = cache.DeleteDocument(userDoc, cursor)
+	assert.NilError(t, err)
+	assertInstanceNotExists(t, user1Hash, "User")
+	assertCursor(t, cursor)
+
 	t.Logf("Deleting member1 document")
-	memberDoc = getMemberDoc(member1Hash, "member1")
+	memberDoc = getMemberDoc(member1IdI, member1Hash, "member1")
 	cursor = "cursor9"
 
 	err = cache.DeleteDocument(memberDoc, cursor)
@@ -629,7 +653,7 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting member2 document")
-	memberDoc = getMemberDoc(member2Hash, "member2")
+	memberDoc = getMemberDoc(member2IdI, member2Hash, "member2")
 	cursor = "cursor10"
 
 	err = cache.DeleteDocument(memberDoc, cursor)
@@ -649,9 +673,11 @@ func TestOpCycle(t *testing.T) {
 func TestDocumentCreationDeduceType(t *testing.T) {
 	setUp("./config-with-special-config.yml")
 	createdDate := "2020-11-12T18:27:47.000"
+	chainDoc1Id := "1"
+	chainDoc1IdI, _ := strconv.ParseUint(chainDoc1Id, 10, 64)
 	hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	chainDoc1 := &domain.ChainDocument{
-		ID:          0,
+		ID:          chainDoc1IdI,
 		Hash:        hash,
 		CreatedDate: createdDate,
 		Creator:     "dao.hypha",
@@ -709,6 +735,8 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 			gql.DocumentSimplifiedInterface,
 		),
 		map[string]interface{}{
+			"docId":            chainDoc1Id,
+			"docId_i":          chainDoc1IdI,
 			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -737,10 +765,15 @@ func TestMissingCoreEdge(t *testing.T) {
 	setUp("./config-no-special-config.yml")
 	t.Log("Store assignment 1 with related core edge non existant")
 	createdDate := "2020-11-12T18:27:47.000"
+	period1Id := "21"
+	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
 	period1Hash := "a5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	hash := "b5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1 := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        hash,
 		CreatedDate: createdDate,
 		Creator:     "dao.hypha",
@@ -795,6 +828,8 @@ func TestMissingCoreEdge(t *testing.T) {
 	expectedInstance := gql.NewSimplifiedInstance(
 		expectedType,
 		map[string]interface{}{
+			"docId":                 assignment1Id,
+			"docId_i":               assignment1IdI,
 			"hash":                  hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -810,8 +845,9 @@ func TestMissingCoreEdge(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Log("Store core edge")
-	period1Doc := getPeriodDoc(period1Hash, 1)
-	period1Instance := getPeriodInstance(period1Hash, 1)
+
+	period1Doc := getPeriodDoc(period1IdI, period1Hash, 1)
+	period1Instance := getPeriodInstance(period1IdI, period1Hash, 1)
 	cursor = "cursor1"
 	err = cache.StoreDocument(period1Doc, cursor)
 	assert.NilError(t, err)
@@ -819,9 +855,11 @@ func TestMissingCoreEdge(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Log("Store assignment 2 with related core edge")
+	assignment2Id := "2"
+	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	hash2 := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2 := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment2IdI,
 		Hash:        hash2,
 		CreatedDate: createdDate,
 		Creator:     "dao.hypha",
@@ -870,12 +908,14 @@ func TestMissingCoreEdge(t *testing.T) {
 	expectedInstance2 := gql.NewSimplifiedInstance(
 		expectedType,
 		map[string]interface{}{
+			"docId":                      assignment2Id,
+			"docId_i":                    assignment2IdI,
 			"hash":                       hash2,
 			"createdDate":                "2020-11-12T18:27:47.000Z",
 			"creator":                    "dao.hypha",
 			"type":                       "Assignment",
 			"details_startPeriod_c":      period1Hash,
-			"details_startPeriod_c_edge": map[string]interface{}{"hash": period1Hash},
+			"details_startPeriod_c_edge": map[string]interface{}{"docId": period1Id},
 		},
 	)
 
@@ -908,7 +948,7 @@ func TestMissingCoreEdge(t *testing.T) {
 	assertInstance(t, period1Instance)
 	assertCursor(t, cursor)
 
-	expectedInstance2.SetValue("details_startPeriod_c_edge", map[string]interface{}{"hash": period1Hash})
+	expectedInstance2.SetValue("details_startPeriod_c_edge", map[string]interface{}{"docId": period1Id})
 
 	t.Log("Update assignment 2, should relink core edge")
 	cursor = "cursor6"
@@ -943,9 +983,11 @@ func TestLogicalIds(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing dho1 document")
+	dhoId := "2"
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
 	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -1012,6 +1054,8 @@ func TestLogicalIds(t *testing.T) {
 	expectedDHOInstance := gql.NewSimplifiedInstance(
 		expectedDhoType,
 		map[string]interface{}{
+			"docId":                          dhoId,
+			"docId_i":                        dhoIdI,
 			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -1027,9 +1071,11 @@ func TestLogicalIds(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing dho2 document")
+	dhoId = "3"
+	dhoIdI, _ = strconv.ParseUint(dhoId, 10, 64)
 	dhoHash = "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc = &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -1078,6 +1124,8 @@ func TestLogicalIds(t *testing.T) {
 	expectedDHOInstance = gql.NewSimplifiedInstance(
 		expectedDhoType,
 		map[string]interface{}{
+			"docId":                          dhoId,
+			"docId_i":                        dhoIdI,
 			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -1093,9 +1141,11 @@ func TestLogicalIds(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing memeber document")
+	memberId := "31"
+	memberIdI, _ := strconv.ParseUint(memberId, 10, 64)
 	memberHash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	memberDoc := &domain.ChainDocument{
-		ID:          1,
+		ID:          memberIdI,
 		Hash:        memberHash,
 		CreatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "bob",
@@ -1162,6 +1212,8 @@ func TestLogicalIds(t *testing.T) {
 	expectedMemberInstance := gql.NewSimplifiedInstance(
 		expectedMemberType,
 		map[string]interface{}{
+			"docId":              memberId,
+			"docId_i":            memberIdI,
 			"hash":               memberHash,
 			"createdDate":        "2020-11-12T19:27:47.000Z",
 			"creator":            "bob",
@@ -1182,9 +1234,11 @@ func TestLogicalIdsShouldFailForNonExistantId(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing dho1 document")
+	dhoId := "1"
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
 	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          dhoIdI,
 		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -1378,9 +1432,11 @@ func TestCustomInterfaces(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing assignment proposal 1 document, has signature fields so it should implement Votable interface")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -1474,6 +1530,8 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                 assignment1Id,
+			"docId_i":               assignment1IdI,
 			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -1492,9 +1550,11 @@ func TestCustomInterfaces(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal 2 document, does not have signature fields but because the assignment type already has the interface it should implement it")
+	assignment2Id := "2"
+	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	assignment2Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment2IdI,
 		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -1584,6 +1644,8 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedAssignment2Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                 assignment2Id,
+			"docId_i":               assignment2IdI,
 			"hash":                  assignment2Hash,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -1603,9 +1665,11 @@ func TestCustomInterfaces(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing profile data document to be used as core edge")
+	profileId := "21"
+	profileIdI, _ := strconv.ParseUint(profileId, 10, 64)
 	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          profileIdI,
 		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -1661,6 +1725,8 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedProfileInstance := gql.NewSimplifiedInstance(
 		expectedProfileType,
 		map[string]interface{}{
+			"docId":          profileId,
+			"docId_i":        profileIdI,
 			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -1675,9 +1741,11 @@ func TestCustomInterfaces(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal 3 document, has signature fields for User Interface, but as its an old type it should NOT be added")
+	assignment3Id := "3"
+	assignment3IdI, _ := strconv.ParseUint(assignment3Id, 10, 64)
 	assignment3Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment3Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment3IdI,
 		Hash:        assignment3Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -1788,6 +1856,8 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedAssignment3Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                  assignment3Id,
+			"docId_i":                assignment3IdI,
 			"hash":                   assignment3Hash,
 			"createdDate":            "2020-11-12T18:27:48.000Z",
 			"creator":                "dao.hypha",
@@ -1797,7 +1867,7 @@ func TestCustomInterfaces(t *testing.T) {
 			"details_title_s":        "Assignment 3",
 			"details_description_s":  nil,
 			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
+			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
 			"details_account_n":      "user1",
 			"vote":                   make([]map[string]interface{}, 0),
 			"votetally":              make([]map[string]interface{}, 0),
@@ -1810,9 +1880,11 @@ func TestCustomInterfaces(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing vote document to be used as edge that is part of the interface")
+	voteId := "41"
+	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          voteIdI,
 		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -1868,6 +1940,8 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedVoteInstance := gql.NewSimplifiedInstance(
 		expectedVoteType,
 		map[string]interface{}{
+			"docId":            voteId,
+			"docId_i":          voteIdI,
 			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -1891,7 +1965,7 @@ func TestCustomInterfaces(t *testing.T) {
 	assert.NilError(t, err)
 
 	expectedVoteEdge := []map[string]interface{}{
-		{"hash": voteHash},
+		{"docId": voteId},
 	}
 	expectedAssignment3Instance.SetValue("vote", expectedVoteEdge)
 	assertInstance(t, expectedAssignment3Instance)
@@ -1904,9 +1978,11 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing profile data document to be used as core edge")
+	profileId := "31"
+	profileIdI, _ := strconv.ParseUint(profileId, 10, 64)
 	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          profileIdI,
 		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -1962,6 +2038,8 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	expectedProfileInstance := gql.NewSimplifiedInstance(
 		expectedProfileType,
 		map[string]interface{}{
+			"docId":          profileId,
+			"docId_i":        profileIdI,
 			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -1976,9 +2054,11 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal document, has signature fields for Votable and User interfaces, both should be added")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -2112,6 +2192,8 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                  assignment1Id,
+			"docId_i":                assignment1IdI,
 			"hash":                   assignment1Hash,
 			"createdDate":            "2020-11-12T18:27:48.000Z",
 			"creator":                "dao.hypha",
@@ -2121,7 +2203,7 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 			"details_title_s":        "Assignment 1",
 			"details_description_s":  nil,
 			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
+			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
 			"details_account_n":      "user2",
 			"vote":                   make([]map[string]interface{}, 0),
 			"votetally":              make([]map[string]interface{}, 0),
@@ -2139,9 +2221,11 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing profile data document to be used as core edge")
+	profileId := "31"
+	profileIdI, _ := strconv.ParseUint(profileId, 10, 64)
 	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          profileIdI,
 		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -2197,6 +2281,8 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	expectedProfileInstance := gql.NewSimplifiedInstance(
 		expectedProfileType,
 		map[string]interface{}{
+			"docId":          profileId,
+			"docId_i":        profileIdI,
 			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -2211,9 +2297,11 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal 1 document, has signature fields for User Interface, it should be added")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -2297,13 +2385,15 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                  assignment1Id,
+			"docId_i":                assignment1IdI,
 			"hash":                   assignment1Hash,
 			"createdDate":            "2020-11-12T18:27:48.000Z",
 			"creator":                "dao.hypha",
 			"type":                   "AssigProp",
 			"details_title_s":        "Assignment 3",
 			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
+			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
 			"details_account_n":      "user1",
 		},
 	)
@@ -2314,271 +2404,16 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	assertCursor(t, cursor)
 }
 
-// func TestCustomInterfacesReferencingAnotherInterface(t *testing.T) {
-// 	setUp("./config-with-special-config.yml")
-// 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
-
-// 	t.Logf("Storing profile data document to be used as core edge")
-// 	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-// 	profileDoc := &domain.ChainDocument{
-// 		ID:          0,
-// 		Hash:        profileHash,
-// 		CreatedDate: "2020-11-12T18:27:48.000",
-// 		Creator:     "dao.hypha",
-// 		ContentGroups: [][]*domain.ChainContent{
-// 			{
-// 				{
-// 					Label: "name",
-// 					Value: []interface{}{
-// 						"string",
-// 						"User 1",
-// 					},
-// 				},
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"string",
-// 						"details",
-// 					},
-// 				},
-// 			},
-// 			{
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"name",
-// 						"system",
-// 					},
-// 				},
-// 				{
-// 					Label: "type",
-// 					Value: []interface{}{
-// 						"name",
-// 						"profile.data",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	expectedProfileType := &gql.SimplifiedType{
-// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
-// 			Name: "ProfileData",
-// 			Fields: map[string]*gql.SimplifiedField{
-// 				"details_name_s": {
-// 					Name:  "details_name_s",
-// 					Type:  gql.GQLType_String,
-// 					Index: "regexp",
-// 				},
-// 			},
-// 		},
-// 		Interfaces: []string{"Document"},
-// 	}
-// 	expectedProfileType.SetFields(gql.DocumentFieldArgs)
-// 	expectedProfileInstance := gql.NewSimplifiedInstance(
-// 		expectedProfileType,
-// 		map[string]interface{}{
-// 			"hash":           profileHash,
-// 			"createdDate":    "2020-11-12T18:27:48.000Z",
-// 			"creator":        "dao.hypha",
-// 			"type":           "ProfileData",
-// 			"details_name_s": "User 1",
-// 		},
-// 	)
-// 	cursor := "cursor1"
-// 	err := cache.StoreDocument(profileDoc, cursor)
-// 	assert.NilError(t, err)
-// 	assertInstance(t, expectedProfileInstance)
-// 	assertCursor(t, cursor)
-
-// 	t.Logf("Storing assignment proposal 1 document, has signature fields for User Interface, it should be added")
-// 	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-// 	assignment1Doc := &domain.ChainDocument{
-// 		ID:          0,
-// 		Hash:        assignment1Hash,
-// 		CreatedDate: "2020-11-12T18:27:48.000",
-// 		Creator:     "dao.hypha",
-// 		ContentGroups: [][]*domain.ChainContent{
-// 			{
-// 				{
-// 					Label: "profile",
-// 					Value: []interface{}{
-// 						"checksum256",
-// 						profileHash,
-// 					},
-// 				},
-// 				{
-// 					Label: "title",
-// 					Value: []interface{}{
-// 						"string",
-// 						"Assignment 3",
-// 					},
-// 				},
-// 				{
-// 					Label: "account",
-// 					Value: []interface{}{
-// 						"name",
-// 						"user1",
-// 					},
-// 				},
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"string",
-// 						"details",
-// 					},
-// 				},
-// 			},
-// 			{
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"name",
-// 						"system",
-// 					},
-// 				},
-// 				{
-// 					Label: "type",
-// 					Value: []interface{}{
-// 						"name",
-// 						"assig.prop",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	expectedAssignmentType := &gql.SimplifiedType{
-// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
-// 			Name: "AssigProp",
-// 			Fields: map[string]*gql.SimplifiedField{
-// 				"details_title_s": {
-// 					Name:  "details_title_s",
-// 					Type:  gql.GQLType_String,
-// 					Index: "regexp",
-// 				},
-// 				"details_profile_c": {
-// 					Name:  "details_profile_c",
-// 					Type:  gql.GQLType_String,
-// 					Index: "exact",
-// 				},
-// 				"details_profile_c_edge": {
-// 					Name: "details_profile_c_edge",
-// 					Type: "ProfileData",
-// 				},
-// 				"details_account_n": {
-// 					Name:  "details_account_n",
-// 					Type:  gql.GQLType_String,
-// 					Index: "exact",
-// 				},
-// 			},
-// 		},
-// 		Interfaces: []string{"Document", "User"},
-// 	}
-// 	expectedAssignmentType.SetFields(gql.DocumentFieldArgs)
-// 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
-// 		expectedAssignmentType,
-// 		map[string]interface{}{
-// 			"hash":                   assignment1Hash,
-// 			"createdDate":            "2020-11-12T18:27:48.000Z",
-// 			"creator":                "dao.hypha",
-// 			"type":                   "AssigProp",
-// 			"details_title_s":        "Assignment 3",
-// 			"details_profile_c":      profileHash,
-// 			"details_profile_c_edge": doccache.GetEdgeValue(profileHash),
-// 			"details_account_n":      "user1",
-// 		},
-// 	)
-// 	cursor = "cursor2"
-// 	err = cache.StoreDocument(assignment1Doc, cursor)
-// 	assert.NilError(t, err)
-// 	assertInstance(t, expectedAssignment1Instance)
-// 	assertCursor(t, cursor)
-
-// 	t.Logf("Storing task document, has signature fields for Taskable Interface, it should be added")
-// 	taskHash := "b1ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-// 	taskDoc := &domain.ChainDocument{
-// 		ID:          0,
-// 		Hash:        taskHash,
-// 		CreatedDate: "2020-11-12T18:27:48.000",
-// 		Creator:     "dao.hypha",
-// 		ContentGroups: [][]*domain.ChainContent{
-// 			{
-// 				{
-// 					Label: "task",
-// 					Value: []interface{}{
-// 						"string",
-// 						"Task 1",
-// 					},
-// 				},
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"string",
-// 						"details",
-// 					},
-// 				},
-// 			},
-// 			{
-// 				{
-// 					Label: "content_group_label",
-// 					Value: []interface{}{
-// 						"name",
-// 						"system",
-// 					},
-// 				},
-// 				{
-// 					Label: "type",
-// 					Value: []interface{}{
-// 						"name",
-// 						"task",
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	expectedTaskType := &gql.SimplifiedType{
-// 		SimplifiedBaseType: &gql.SimplifiedBaseType{
-// 			Name: "Task",
-// 			Fields: map[string]*gql.SimplifiedField{
-// 				"details_task_s": {
-// 					Name:  "details_task_s",
-// 					Type:  gql.GQLType_String,
-// 					Index: "regexp",
-// 				},
-// 				"user": {
-// 					Name:    "user",
-// 					Type:    "User",
-// 					IsArray: true,
-// 				},
-// 			},
-// 		},
-// 		Interfaces: []string{"Document", "Taskable"},
-// 	}
-// 	expectedTaskType.SetFields(gql.DocumentFieldArgs)
-// 	expectedTaskInstance := gql.NewSimplifiedInstance(
-// 		expectedTaskType,
-// 		map[string]interface{}{
-// 			"hash":           taskHash,
-// 			"createdDate":    "2020-11-12T18:27:48.000Z",
-// 			"creator":        "dao.hypha",
-// 			"type":           "Task",
-// 			"details_task_s": "Task 1",
-// 			"user":           make([]map[string]interface{}, 0),
-// 		},
-// 	)
-// 	cursor = "cursor2"
-// 	err = cache.StoreDocument(taskDoc, cursor)
-// 	assert.NilError(t, err)
-// 	assertInstance(t, expectedTaskInstance)
-// 	assertCursor(t, cursor)
-// }
 func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	setUp("./config-with-special-config.yml")
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing assignment proposal 1 document")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
@@ -2651,6 +2486,8 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                   assignment1Id,
+			"docId_i":                 assignment1IdI,
 			"hash":                    assignment1Hash,
 			"createdDate":             "2020-11-12T19:27:47.000Z",
 			"creator":                 "dao.hypha",
@@ -2667,9 +2504,11 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
+	voteId := "21"
+	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          voteIdI,
 		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -2725,6 +2564,8 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	expectedVoteInstance := gql.NewSimplifiedInstance(
 		expectedVoteType,
 		map[string]interface{}{
+			"docId":            voteId,
+			"docId_i":          voteIdI,
 			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -2755,16 +2596,18 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	})
 
 	expectedVoteEdge := []map[string]interface{}{
-		{"hash": voteHash},
+		{"docId": voteId},
 	}
 	expectedAssignment1Instance.SetValue("extension", expectedVoteEdge)
 	assertInstance(t, expectedAssignment1Instance)
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal 2 document")
+	assignment2Id := "2"
+	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment2IdI,
 		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -2818,6 +2661,8 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	expectedAssignment2Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                   assignment2Id,
+			"docId_i":                 assignment2IdI,
 			"hash":                    assignment2Hash,
 			"createdDate":             "2020-11-12T18:27:47.000Z",
 			"creator":                 "dao.hypha",
@@ -2843,9 +2688,11 @@ func TestCustomInterfacesShouldFailForTypeWithoutIDField(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing assignment proposal 1 document without interface ID field")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
@@ -2902,9 +2749,11 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing assignment proposal 1 document, has signature fields so it should implement Votable interface")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -2998,6 +2847,8 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                 assignment1Id,
+			"docId_i":               assignment1IdI,
 			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -3016,9 +2867,11 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 	assertCursor(t, cursor)
 
 	t.Logf("Storing assignment proposal 2 document, does not have id field of implementing interface")
+	assignment2Id := "2"
+	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	assignment2Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment2IdI,
 		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -3069,9 +2922,11 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing assignment proposal 1 document")
+	assignment1Id := "1"
+	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
-		ID:          0,
+		ID:          assignment1IdI,
 		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -3165,6 +3020,8 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
+			"docId":                 assignment1Id,
+			"docId_i":               assignment1IdI,
 			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -3183,9 +3040,11 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Storing VoteOld document to be used as edge that is incompatible with interface")
+	voteId := "21"
+	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
 	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
-		ID:          0,
+		ID:          voteIdI,
 		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
 		Creator:     "dao.hypha",
@@ -3241,6 +3100,8 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	expectedVoteInstance := gql.NewSimplifiedInstance(
 		expectedVoteType,
 		map[string]interface{}{
+			"docId":            voteId,
+			"docId_i":          voteIdI,
 			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -3290,9 +3151,9 @@ func assertInstanceNotExists(t *testing.T, hash, typeName string) {
 	assert.Assert(t, actual == nil)
 }
 
-func getMemberDoc(hash, account string) *domain.ChainDocument {
+func getMemberDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
 	return &domain.ChainDocument{
-		ID:          1,
+		ID:          docIdI,
 		Hash:        hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
 		Creator:     account,
@@ -3333,9 +3194,9 @@ func getMemberDoc(hash, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserDoc(hash, account string) *domain.ChainDocument {
+func getUserDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
 	return &domain.ChainDocument{
-		ID:          1,
+		ID:          docIdI,
 		Hash:        hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
 		Creator:     account,
@@ -3376,10 +3237,12 @@ func getUserDoc(hash, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserInstance(hash, account string) *gql.SimplifiedInstance {
+func getUserInstance(docIdI uint64, hash, account string) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		userType,
 		map[string]interface{}{
+			"docId":             strconv.FormatUint(docIdI, 10),
+			"docId_i":           docIdI,
 			"hash":              hash,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
@@ -3389,10 +3252,12 @@ func getUserInstance(hash, account string) *gql.SimplifiedInstance {
 	)
 }
 
-func getMemberInstance(hash, account string) *gql.SimplifiedInstance {
+func getMemberInstance(docIdI uint64, hash, account string) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		memberType,
 		map[string]interface{}{
+			"docId":             strconv.FormatUint(docIdI, 10),
+			"docId_i":           docIdI,
 			"hash":              hash,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
@@ -3402,9 +3267,9 @@ func getMemberInstance(hash, account string) *gql.SimplifiedInstance {
 	)
 }
 
-func getPeriodDoc(hash string, number int64) *domain.ChainDocument {
+func getPeriodDoc(id uint64, hash string, number int64) *domain.ChainDocument {
 	return &domain.ChainDocument{
-		ID:          1,
+		ID:          id,
 		Hash:        hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
@@ -3445,10 +3310,12 @@ func getPeriodDoc(hash string, number int64) *domain.ChainDocument {
 	}
 }
 
-func getPeriodInstance(hash string, number int64) *gql.SimplifiedInstance {
+func getPeriodInstance(docId uint64, hash string, number int64) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		periodType,
 		map[string]interface{}{
+			"docId":            strconv.FormatUint(docId, 10),
+			"docId_i":          docId,
 			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",

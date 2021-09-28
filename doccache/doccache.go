@@ -256,7 +256,7 @@ func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
 				Name: coreEdgeFieldName,
 				Type: instance.GetValue("type").(string),
 			})
-			newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("hash")))
+			newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("docId")))
 		} else {
 			log.Errorf(nil, "core edge: %v with hash: %v not found for type: %v with hash: %v", field, hash, newType.Name, newInstance.GetValue("hash"))
 			// return fmt.Errorf("core edge with hash: %v not found", hash)
@@ -266,8 +266,8 @@ func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
 	return nil
 }
 
-func GetEdgeValue(hash interface{}) map[string]interface{} {
-	return map[string]interface{}{"hash": hash}
+func GetEdgeValue(docId interface{}) map[string]interface{} {
+	return map[string]interface{}{"docId": docId}
 }
 
 //DeleteDocument Deletes a document
@@ -331,9 +331,9 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 
 	var set, remove map[string]interface{}
 	if deleteOp {
-		remove = chainEdge.GetEdgeRef()
+		remove = chainEdge.GetEdgeRef(toInstance.GetValue("docId"))
 	} else {
-		set = chainEdge.GetEdgeRef()
+		set = chainEdge.GetEdgeRef(toInstance.GetValue("docId"))
 	}
 	mutation, err := fromType.UpdateMutation(DocumentIdName, chainEdge.From, set, remove)
 	if err != nil {

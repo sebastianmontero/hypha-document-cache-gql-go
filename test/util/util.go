@@ -45,12 +45,12 @@ func AssertCoreEdge(t *testing.T, actual, expected interface{}) {
 	} else {
 		a := actual.(map[string]interface{})
 		e := expected.(map[string]interface{})
-		assert.Equal(t, a["hash"], e["hash"])
+		assert.Equal(t, a["docId"], e["docId"])
 	}
 }
 func AssertContainsEdge(t *testing.T, edge map[string]interface{}, edges []interface{}) {
 	for _, e := range edges {
-		if e.(map[string]interface{})["hash"] == edge["hash"] {
+		if e.(map[string]interface{})["docId"] == edge["docId"] {
 			return
 		}
 	}

@@ -17,14 +17,10 @@ func NewSimplifiedInstance(simplifiedType *SimplifiedType, values map[string]int
 }
 
 //idName: main non mutable id field
-func (m *SimplifiedInstance) GetUpdateValues(idName string) (map[string]interface{}, error) {
-	id, err := m.SimplifiedType.GetIdField(idName)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't get update values, error: %v", err)
-	}
+func (m *SimplifiedInstance) GetUpdateValues() (map[string]interface{}, error) {
 	values := make(map[string]interface{}, len(m.Values))
 	for name, value := range m.Values {
-		if name != id.Name {
+		if !m.SimplifiedType.GetField(name).IsID {
 			values[name] = value
 		}
 	}
@@ -53,7 +49,7 @@ func (m *SimplifiedInstance) UpdateMutation(idName string, oldInstance *Simplifi
 		return nil, fmt.Errorf("failed creating update mutation, err: %v", err)
 	}
 
-	set, err := m.GetUpdateValues(idName)
+	set, err := m.GetUpdateValues()
 	if err != nil {
 		return nil, err
 	}

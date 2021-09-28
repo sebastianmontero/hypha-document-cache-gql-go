@@ -128,7 +128,7 @@ func (m *ChainCertificate) String() string {
 
 //ChainDocument domain object
 type ChainDocument struct {
-	ID            int                 `json:"id"`
+	ID            uint64              `json:"id"`
 	Hash          string              `json:"hash,omitempty"`
 	CreatedDate   string              `json:"created_date,omitempty"`
 	Creator       string              `json:"creator,omitempty"`
@@ -141,6 +141,8 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 	fields := make(map[string]*gql.SimplifiedField)
 	checksumFields := make([]string, 0)
 	values := map[string]interface{}{
+		"docId":       strconv.FormatUint(m.ID, 10),
+		"docId_i":     m.ID,
 		"hash":        m.Hash,
 		"creator":     m.Creator,
 		"createdDate": FormatDateTime(m.CreatedDate),

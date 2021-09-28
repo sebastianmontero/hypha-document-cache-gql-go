@@ -20,9 +20,9 @@ type ChainEdge struct {
 // 	return nil
 // }
 
-func (m *ChainEdge) GetEdgeRef() map[string]interface{} {
+func (m *ChainEdge) GetEdgeRef(docId interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		m.Name: []map[string]interface{}{{"hash": m.To}},
+		m.Name: []map[string]interface{}{{"docId": docId}},
 	}
 }
 
