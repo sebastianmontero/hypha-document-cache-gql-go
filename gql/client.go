@@ -53,6 +53,7 @@ func (m *Client) GetOne(idName string, idValue interface{}, simplifiedType *Simp
 }
 
 func (m *Client) Get(idName string, ids []interface{}, simplifiedType *SimplifiedType, projection []string) (map[interface{}]*SimplifiedInstance, error) {
+	// fmt.Println("idName: ", idName, "ids: ", ids, "simplifiedType:", simplifiedType, "projection: ", projection)
 	baseInstances, err := m.GetBaseInstances(idName, ids, simplifiedType.SimplifiedBaseType, projection)
 	if err != nil {
 		return nil, err

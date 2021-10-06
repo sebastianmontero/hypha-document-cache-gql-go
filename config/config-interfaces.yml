@@ -40,3 +40,13 @@ custom-interfaces:
       - name: member_name
         type: name
         signature: true # used to identify votable types
+    types:
+      - owner
+      - admin
+  - name: Editable
+    fields:
+      - content-group: details
+        name: version
+        type: string
+    types:
+      - pro.paper

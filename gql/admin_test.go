@@ -705,5 +705,6 @@ func GetVotableInterface() *gql.SimplifiedInterface {
 			},
 		},
 		[]string{},
+		nil,
 	)
 }

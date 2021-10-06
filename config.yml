@@ -34,6 +34,13 @@ custom-interfaces:
         type: vote
       - name: votetally
         type: vote.tally
+    types:
+      - payout
+      - assignment
+      - assignbadge
+      - edit
+      - suspend
+
 logical-ids:
   - type: member #Existing type use name from orginal chain doc
     ids:

@@ -61,16 +61,29 @@ func (m SimplifiedInterfaces) GetObjectTypeFields(name string) []*SimplifiedFiel
 type SimplifiedInterface struct {
 	*SimplifiedBaseType
 	SignatureFields []string
+	Types           map[string]bool
 }
 
-func NewSimplifiedInterface(name string, fields map[string]*SimplifiedField, signatureFields []string) *SimplifiedInterface {
+func NewSimplifiedInterface(name string, fields map[string]*SimplifiedField, signatureFields, types []string) *SimplifiedInterface {
+	typesMap := make(map[string]bool, len(signatureFields))
+
+	for _, t := range types {
+		typesMap[t] = true
+	}
 	return &SimplifiedInterface{
 		SimplifiedBaseType: NewSimplifiedBaseType(name, fields),
 		SignatureFields:    signatureFields,
+		Types:              typesMap,
 	}
 }
 
 func (m *SimplifiedInterface) ShouldImplement(simplifiedType *SimplifiedType) bool {
+	if _, ok := m.Types[simplifiedType.Name]; ok {
+		return true
+	}
+	if len(m.SignatureFields) == 0 {
+		return false
+	}
 	for _, signatureField := range m.SignatureFields {
 		if !simplifiedType.HasField(signatureField) {
 			return false
@@ -80,8 +93,8 @@ func (m *SimplifiedInterface) ShouldImplement(simplifiedType *SimplifiedType) bo
 }
 
 func (m *SimplifiedInterface) Validate() error {
-	if len(m.SignatureFields) == 0 {
-		return fmt.Errorf("invalid interface: %v, it must have at least one signature field", m.Name)
+	if len(m.SignatureFields) == 0 && len(m.Types) == 0 {
+		return fmt.Errorf("invalid interface: %v, it must have at least one signature field or type specified", m.Name)
 	}
 	return nil
 }

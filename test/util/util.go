@@ -59,7 +59,7 @@ func AssertContainsEdge(t *testing.T, edge map[string]interface{}, edges []inter
 
 func AssertSimplifiedBaseType(t *testing.T, actual, expected *gql.SimplifiedBaseType) {
 	assert.Equal(t, actual.Name, expected.Name)
-	assert.Equal(t, len(actual.Fields), len(expected.Fields))
+	assert.Equal(t, len(actual.Fields), len(expected.Fields), "Different number of fields actual: %v expected: %v", actual.Fields, expected.Fields)
 	for name, field := range expected.Fields {
 		AssertSimplifiedField(t, actual.Fields[name], field)
 	}
@@ -68,6 +68,11 @@ func AssertSimplifiedBaseType(t *testing.T, actual, expected *gql.SimplifiedBase
 func AssertSimplifiedInterface(t *testing.T, actual, expected *gql.SimplifiedInterface) {
 	AssertSimplifiedBaseType(t, actual.SimplifiedBaseType, expected.SimplifiedBaseType)
 	AssertUnorderedStrArray(t, actual.SignatureFields, expected.SignatureFields)
+	assert.Equal(t, len(actual.Types), len(expected.Types))
+	for et, _ := range expected.Types {
+		_, ok := actual.Types[et]
+		assert.Assert(t, ok, "Expected type: %v not found in actual types: %v for interface:  %v", et, actual.Types, expected.Name)
+	}
 }
 
 func AssertSimplifiedType(t *testing.T, actual, expected *gql.SimplifiedType) {

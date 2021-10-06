@@ -164,13 +164,15 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 				signatureFields = append(signatureFields, fullFieldName)
 			}
 		}
-		interf := &gql.SimplifiedInterface{
-			SimplifiedBaseType: &gql.SimplifiedBaseType{
-				Name:   name,
-				Fields: fields,
-			},
-			SignatureFields: signatureFields,
+		var types []string
+		typesI, ok := interfConfig["types"].([]interface{})
+		if ok {
+			types = make([]string, 0, len(typesI))
+			for _, t := range typesI {
+				types = append(types, domain.GetObjectTypeName(t.(string)))
+			}
 		}
+		interf := gql.NewSimplifiedInterface(name, fields, signatureFields, types)
 		err := interf.Validate()
 		if err != nil {
 			return nil, err

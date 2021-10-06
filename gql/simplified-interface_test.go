@@ -220,13 +220,133 @@ func TestApplyInterfacesMultipleSignatureFields(t *testing.T) {
 	util.AssertSimplifiedType(t, badgeType, expectedBadgeType)
 }
 
+func TestApplyInterfacesByType(t *testing.T) {
+	interfaces := getMockInterfaces()
+	var proPaperType = gql.NewSimplifiedType(
+		"ProPaper",
+		map[string]*gql.SimplifiedField{
+			"details_account_n": {
+				Name:  "details_account_n",
+				Type:  "String",
+				Index: "exact",
+			},
+		},
+		nil,
+	)
+
+	err := interfaces.ApplyInterfaces(proPaperType, nil)
+	assert.NilError(t, err)
+
+	expectedProPaperType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "ProPaper",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  "String",
+					Index: "exact",
+				},
+				"details_version_s": {
+					Name:  "details_version_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Editable"},
+	}
+	util.AssertSimplifiedType(t, proPaperType, expectedProPaperType)
+
+	var examType = gql.NewSimplifiedType(
+		"Exam",
+		map[string]*gql.SimplifiedField{
+			"details_version_s": {
+				Name:  "details_version_s",
+				Type:  gql.GQLType_String,
+				Index: "regexp",
+			},
+		},
+		nil,
+	)
+
+	err = interfaces.ApplyInterfaces(examType, nil)
+	assert.NilError(t, err)
+
+	expectedProPaperType = &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Exam",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_version_s": {
+					Name:  "details_version_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Editable"},
+	}
+	util.AssertSimplifiedType(t, examType, expectedProPaperType)
+}
+
+func TestApplyInterfacesByTypeWithSignatureFields(t *testing.T) {
+	interfaces := getMockInterfaces()
+	var adminType = gql.NewSimplifiedType(
+		"Admin",
+		map[string]*gql.SimplifiedField{
+			"details_account_n": {
+				Name:  "details_account_n",
+				Type:  "String",
+				Index: "exact",
+			},
+			"details_profile_c": {
+				Name:  "details_profile_c",
+				Type:  gql.GQLType_String,
+				Index: "exact",
+			},
+		},
+		nil,
+	)
+
+	err := interfaces.ApplyInterfaces(adminType, nil)
+	assert.NilError(t, err)
+
+	expectedAdminType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Admin",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  "String",
+					Index: "exact",
+				},
+				"details_profile_c": {
+					Name:  "details_profile_c",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+				"details_profile_c_edge": {
+					Name: "details_profile_c_edge",
+					Type: "ProfileData",
+				},
+				"memberName": {
+					Name:  "memberName",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+			},
+		},
+		Interfaces: []string{"User"},
+	}
+	util.AssertSimplifiedType(t, adminType, expectedAdminType)
+}
+
 func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 	interfaces := getMockInterfaces()
 	var memberProposalType = gql.NewSimplifiedType(
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_badge_n",
+				Name:  "details_account_n",
 				Type:  "String",
 				Index: "exact",
 			},
@@ -271,7 +391,7 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 			Name: "MemberProposal",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_badge_n",
+					Name:  "details_account_n",
 					Type:  "String",
 					Index: "exact",
 				},
@@ -374,6 +494,48 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 		},
 	}
 	util.AssertSimplifiedType(t, memberProposalType, expectedMemberProposalType)
+
+	var oldProPaperType = gql.NewSimplifiedType(
+		"ProPaper",
+		map[string]*gql.SimplifiedField{
+			"details_account_n": {
+				Name:  "details_account_n",
+				Type:  "String",
+				Index: "exact",
+			},
+		},
+		nil,
+	)
+
+	var proPaperType = gql.NewSimplifiedType(
+		"ProPaper",
+		map[string]*gql.SimplifiedField{
+			"details_account_n": {
+				Name:  "details_account_n",
+				Type:  "String",
+				Index: "exact",
+			},
+		},
+		nil,
+	)
+
+	err = interfaces.ApplyInterfaces(proPaperType, oldProPaperType)
+	assert.NilError(t, err)
+
+	expectedProPaperType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "ProPaper",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  "String",
+					Index: "exact",
+				},
+			},
+		},
+		Interfaces: []string{},
+	}
+	util.AssertSimplifiedType(t, proPaperType, expectedProPaperType)
 }
 
 func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *testing.T) {
@@ -656,6 +818,7 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 				"ballot_expiration_t",
 				"votetally",
 			},
+			nil,
 		))
 	interfaces.Put(
 		gql.NewSimplifiedInterface(
@@ -679,6 +842,9 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			[]string{
 				"memberName",
 			},
+			[]string{
+				"Admin",
+			},
 		))
 	interfaces.Put(
 		gql.NewSimplifiedInterface(
@@ -697,6 +863,23 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			},
 			[]string{
 				"details_task_s",
+			},
+			nil,
+		))
+	interfaces.Put(
+		gql.NewSimplifiedInterface(
+			"Editable",
+			map[string]*gql.SimplifiedField{
+				"details_version_s": {
+					Name:  "details_version_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+			nil,
+			[]string{
+				"ProPaper",
+				"Exam",
 			},
 		))
 	return interfaces

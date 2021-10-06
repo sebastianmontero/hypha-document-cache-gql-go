@@ -1345,6 +1345,10 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		[]string{
 			"ballot_expiration_t",
 		},
+		[]string{
+			"Payout",
+			"AssignBadge",
+		},
 	)
 	util.AssertInterface(t, votableInterface, currentSchema)
 
@@ -1380,6 +1384,7 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 			"details_profile_c",
 			"details_account_s",
 		},
+		nil,
 	)
 	util.AssertInterface(t, userInterface, currentSchema)
 
@@ -1401,6 +1406,7 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		[]string{
 			"details_extensionName_s",
 		},
+		nil,
 	)
 	util.AssertInterface(t, extendableInterface, currentSchema)
 
@@ -1419,11 +1425,30 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 				IsArray: true,
 			},
 		},
+		[]string{},
 		[]string{
-			"details_task_s",
+			"AdminTask",
 		},
 	)
 	util.AssertInterface(t, taskableInterface, currentSchema)
+
+	t.Logf("Checking Editable interface")
+	editableInterface := gql.NewSimplifiedInterface(
+		"Editable",
+		map[string]*gql.SimplifiedField{
+			"details_version_s": {
+				Name:  "details_version_s",
+				Type:  gql.GQLType_String,
+				Index: "regexp",
+			},
+		},
+		[]string{},
+		[]string{
+			"AdminTask",
+			"Payout",
+		},
+	)
+	util.AssertInterface(t, editableInterface, currentSchema)
 
 }
 
@@ -1969,6 +1994,509 @@ func TestCustomInterfaces(t *testing.T) {
 	}
 	expectedAssignment3Instance.SetValue("vote", expectedVoteEdge)
 	assertInstance(t, expectedAssignment3Instance)
+	assertCursor(t, cursor)
+
+}
+
+func TestCustomInterfacesAddByType(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assign badge proposal document, is of votable type")
+	assignBadge1Id := "1"
+	assignBadge1IdI, _ := strconv.ParseUint(assignBadge1Id, 10, 64)
+	assignBadge1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignBadge1Doc := &domain.ChainDocument{
+		ID:          assignBadge1IdI,
+		Hash:        assignBadge1Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						11,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assignbadge",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignBadgeType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Assignbadge",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable"},
+	}
+	expectedAssignBadgeType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignBadge1Instance := gql.NewSimplifiedInstance(
+		expectedAssignBadgeType,
+		map[string]interface{}{
+			"docId":                 assignBadge1Id,
+			"docId_i":               assignBadge1IdI,
+			"hash":                  assignBadge1Hash,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "Assignbadge",
+			"ballot_expiration_t":   nil,
+			"ballot_votes_i":        11,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(assignBadge1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignBadge1Instance)
+	assertCursor(t, cursor)
+
+}
+
+func TestCustomInterfacesAddMultipleByType(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing assign badge proposal document, is of votable type")
+	payout1Id := "1"
+	payout1IdI, _ := strconv.ParseUint(payout1Id, 10, 64)
+	payout1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	payout1Doc := &domain.ChainDocument{
+		ID:          payout1IdI,
+		Hash:        payout1Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						11,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"payout",
+					},
+				},
+			},
+		},
+	}
+	expectedPayoutType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Payout",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"details_version_s": {
+					Name:  "details_version_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable", "Editable"},
+	}
+	expectedPayoutType.SetFields(gql.DocumentFieldArgs)
+	expectedPayout1Instance := gql.NewSimplifiedInstance(
+		expectedPayoutType,
+		map[string]interface{}{
+			"docId":                 payout1Id,
+			"docId_i":               payout1IdI,
+			"hash":                  payout1Hash,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"creator":               "dao.hypha",
+			"type":                  "Payout",
+			"ballot_expiration_t":   nil,
+			"ballot_votes_i":        11,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"details_version_s":     nil,
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(payout1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedPayout1Instance)
+	assertCursor(t, cursor)
+
+}
+
+func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
+	setUp("./config-with-special-config.yml")
+	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+
+	t.Logf("Storing profile data document to be used as core edge")
+	profileId := "31"
+	profileIdI, _ := strconv.ParseUint(profileId, 10, 64)
+	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	profileDoc := &domain.ChainDocument{
+		ID:          profileIdI,
+		Hash:        profileHash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "name",
+					Value: []interface{}{
+						"string",
+						"User 1",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"profile.data",
+					},
+				},
+			},
+		},
+	}
+	expectedProfileType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "ProfileData",
+			Fields: map[string]*gql.SimplifiedField{
+				"details_name_s": {
+					Name:  "details_name_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+		},
+		Interfaces: []string{"Document"},
+	}
+	expectedProfileType.SetFields(gql.DocumentFieldArgs)
+	expectedProfileInstance := gql.NewSimplifiedInstance(
+		expectedProfileType,
+		map[string]interface{}{
+			"docId":          profileId,
+			"docId_i":        profileIdI,
+			"hash":           profileHash,
+			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"creator":        "dao.hypha",
+			"type":           "ProfileData",
+			"details_name_s": "User 1",
+		},
+	)
+	cursor := "cursor1"
+	err := cache.StoreDocument(profileDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedProfileInstance)
+	assertCursor(t, cursor)
+
+	t.Logf("Storing assignment badge document, has type for Votable and signature fields for User interfaces, both should be added")
+	assignbadge1Id := "1"
+	assignbadge1IdI, _ := strconv.ParseUint(assignbadge1Id, 10, 64)
+	assignbadge1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	assignbadge1Doc := &domain.ChainDocument{
+		ID:          assignbadge1IdI,
+		Hash:        assignbadge1Hash,
+		CreatedDate: "2020-11-12T18:27:48.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "votes",
+					Value: []interface{}{
+						"int64",
+						11,
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"ballot",
+					},
+				},
+			},
+			{
+				{
+					Label: "profile",
+					Value: []interface{}{
+						"checksum256",
+						profileHash,
+					},
+				},
+				{
+					Label: "title",
+					Value: []interface{}{
+						"string",
+						"Assignment 1",
+					},
+				},
+				{
+					Label: "account",
+					Value: []interface{}{
+						"name",
+						"user2",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"assignbadge",
+					},
+				},
+			},
+		},
+	}
+	expectedAssignbadgeType := &gql.SimplifiedType{
+		SimplifiedBaseType: &gql.SimplifiedBaseType{
+			Name: "Assignbadge",
+			Fields: map[string]*gql.SimplifiedField{
+				"ballot_expiration_t": {
+					Name:  "ballot_expiration_t",
+					Type:  gql.GQLType_Time,
+					Index: "hour",
+				},
+				"ballot_votes_i": {
+					Name:  "ballot_votes_i",
+					Type:  gql.GQLType_Int64,
+					Index: "int64",
+				},
+				"details_title_s": {
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Index:   "regexp",
+					IsID:    true,
+					NonNull: true,
+				},
+				"details_description_s": {
+					Name:  "details_description_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+				"vote": {
+					Name:    "vote",
+					Type:    "Vote",
+					IsArray: true,
+				},
+				"votetally": {
+					Name:    "votetally",
+					Type:    "VoteTally",
+					IsArray: true,
+				},
+				"details_profile_c": {
+					Name:  "details_profile_c",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+				"details_profile_c_edge": {
+					Name: "details_profile_c_edge",
+					Type: "ProfileData",
+				},
+				"details_account_n": {
+					Name:  "details_account_n",
+					Type:  gql.GQLType_String,
+					Index: "exact",
+				},
+			},
+		},
+		Interfaces: []string{"Document", "Votable", "User"},
+	}
+	expectedAssignbadgeType.SetFields(gql.DocumentFieldArgs)
+	expectedAssignbadge1Instance := gql.NewSimplifiedInstance(
+		expectedAssignbadgeType,
+		map[string]interface{}{
+			"docId":                  assignbadge1Id,
+			"docId_i":                assignbadge1IdI,
+			"hash":                   assignbadge1Hash,
+			"createdDate":            "2020-11-12T18:27:48.000Z",
+			"creator":                "dao.hypha",
+			"type":                   "Assignbadge",
+			"ballot_expiration_t":    nil,
+			"ballot_votes_i":         11,
+			"details_title_s":        "Assignment 1",
+			"details_description_s":  nil,
+			"details_profile_c":      profileHash,
+			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
+			"details_account_n":      "user2",
+			"vote":                   make([]map[string]interface{}, 0),
+			"votetally":              make([]map[string]interface{}, 0),
+		},
+	)
+	cursor = "cursor2"
+	err = cache.StoreDocument(assignbadge1Doc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedAssignbadge1Instance)
 	assertCursor(t, cursor)
 
 }

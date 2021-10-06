@@ -82,6 +82,7 @@ func TestLoadInterfaces(t *testing.T) {
 			[]string{
 				"ballot_expiration_t",
 			},
+			nil,
 		))
 	expected.Put(
 		gql.NewSimplifiedInterface(
@@ -106,6 +107,25 @@ func TestLoadInterfaces(t *testing.T) {
 				"memberName",
 				"details_profile_c",
 			},
+			[]string{
+				"Owner",
+				"Admin",
+			},
+		))
+	expected.Put(
+		gql.NewSimplifiedInterface(
+			"Editable",
+			map[string]*gql.SimplifiedField{
+				"details_version_s": {
+					Name:  "details_version_s",
+					Type:  gql.GQLType_String,
+					Index: "regexp",
+				},
+			},
+			nil,
+			[]string{
+				"ProPaper",
+			},
 		))
 
 	util.AssertSimplifiedInterfaces(t, config.Interfaces, expected)
@@ -113,8 +133,8 @@ func TestLoadInterfaces(t *testing.T) {
 }
 
 func TestLoadInterfacesShouldFailForNoSignatureFields(t *testing.T) {
-	_, err := config.LoadConfig("./config-interfaces-no-signature.yml")
-	assert.ErrorContains(t, err, "it must have at least one signature field")
+	_, err := config.LoadConfig("./config-interfaces-no-signature-types.yml")
+	assert.ErrorContains(t, err, "it must have at least one signature field or type specified")
 
 }
 
