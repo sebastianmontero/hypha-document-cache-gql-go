@@ -9,6 +9,10 @@ import (
 	"gotest.tools/assert"
 )
 
+func TestClearDB(t *testing.T) {
+	beforeEach()
+}
+
 func TestAdd(t *testing.T) {
 	beforeEach()
 	schema, err := gql.NewSchema("", true)
