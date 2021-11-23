@@ -3,6 +3,7 @@ name: Hypha Document Cache GQL GO
 on:
   push:
     branches:
+    - hashed
     - dev2
     - dev
     - master
@@ -19,6 +20,10 @@ jobs:
         if: endsWith(github.ref, '/dev2')
         run: |
           echo "DOCKER_IMAGE_NAME=hypha-doc-cache-gql-go-testnet2" >> $GITHUB_ENV
+      - name: Set docker-image-name to hashed
+        if: endsWith(github.ref, '/hashed')
+        run: |
+          echo "DOCKER_IMAGE_NAME=hypha-doc-cache-gql-go-hashed" >> $GITHUB_ENV
       - name: Set docker-image-name to mainnet
         if: endsWith(github.ref, '/master')
         run: |
