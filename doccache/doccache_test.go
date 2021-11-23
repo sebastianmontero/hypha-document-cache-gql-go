@@ -301,8 +301,8 @@ func TestOpCycle(t *testing.T) {
 	cursor = "cursor4_1"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   member1Hash,
+		From: dhoId,
+		To:   member1Id,
 	}, false, cursor)
 	assert.NilError(t, err)
 
@@ -323,8 +323,8 @@ func TestOpCycle(t *testing.T) {
 	cursor = "cursor4_2"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   member2Hash,
+		From: dhoId,
+		To:   member2Id,
 	}, false, cursor)
 	assert.NilError(t, err)
 
@@ -340,8 +340,8 @@ func TestOpCycle(t *testing.T) {
 	cursor = "cursor4_2"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   user1Hash,
+		From: dhoId,
+		To:   user1Id,
 	}, false, cursor)
 	assert.NilError(t, err)
 
@@ -504,12 +504,118 @@ func TestOpCycle(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
+	t.Logf("Storing period 3 document")
+	period3Id := "23"
+	period3IdI, _ := strconv.ParseUint(period3Id, 10, 64)
+	period3Hash := "i3fc74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
+	periodDoc = getPeriodDoc(period3IdI, period3Hash, 3)
+	expectedPeriodInstance = getPeriodInstance(period3IdI, period3Hash, 3)
+
+	cursor = "cursor7_1"
+	err = cache.StoreDocument(periodDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedPeriodInstance)
+	assertCursor(t, cursor)
+
+	t.Log("Update 2 dho, update core edge")
+	dhoDoc = &domain.ChainDocument{
+		ID:          dhoIdI,
+		Hash:        dhoHash,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4233.04 HVOICE",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
+					Label: "start_period",
+					Value: []interface{}{
+						"checksum256",
+						period1Hash,
+					},
+				},
+				{
+					Label: "period_count",
+					Value: []interface{}{
+						"int64",
+						"50",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-05-12T05:09:36.5",
+					},
+				},
+				{
+					Label: "end_period",
+					Value: []interface{}{
+						"checksum256",
+						period3Hash,
+					},
+				},
+			},
+		},
+	}
+
+	expectedDHOInstance.SetValue("system_endPeriod_c", period3Hash)
+	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period3Id))
+
+	cursor = "cursor6"
+	err = cache.StoreDocument(dhoDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, expectedDHOInstance)
+	assertCursor(t, cursor)
+
 	t.Log("Deleting member 1 edge")
 	cursor = "cursor7"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   member1Hash,
+		From: dhoId,
+		To:   member1Id,
 	}, true, cursor)
 	assert.NilError(t, err)
 
@@ -520,7 +626,7 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance.SetValue("member", expectedMemberEdge)
 	assertInstance(t, expectedDHOInstance)
 
-	t.Log("Update 2 DHO document: remove core edge")
+	t.Log("Update 3 DHO document: remove core edge")
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
 		Hash:        dhoHash,
@@ -590,7 +696,7 @@ func TestOpCycle(t *testing.T) {
 					Label: "end_period",
 					Value: []interface{}{
 						"checksum256",
-						period2Hash,
+						period3Hash,
 					},
 				},
 			},
@@ -610,8 +716,8 @@ func TestOpCycle(t *testing.T) {
 	cursor = "cursor7_1"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   user1Hash,
+		From: dhoId,
+		To:   user1Id,
 	}, true, cursor)
 	assert.NilError(t, err)
 
@@ -625,8 +731,8 @@ func TestOpCycle(t *testing.T) {
 	cursor = "cursor8"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "member",
-		From: dhoHash,
-		To:   member2Hash,
+		From: dhoId,
+		To:   member2Id,
 	}, true, cursor)
 	assert.NilError(t, err)
 
@@ -640,7 +746,7 @@ func TestOpCycle(t *testing.T) {
 
 	err = cache.DeleteDocument(userDoc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, user1Hash, "User")
+	assertInstanceNotExists(t, user1Id, "User")
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting member1 document")
@@ -649,7 +755,7 @@ func TestOpCycle(t *testing.T) {
 
 	err = cache.DeleteDocument(memberDoc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, member1Hash, "Member")
+	assertInstanceNotExists(t, member1Id, "Member")
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting member2 document")
@@ -658,14 +764,14 @@ func TestOpCycle(t *testing.T) {
 
 	err = cache.DeleteDocument(memberDoc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, member2Hash, "Member")
+	assertInstanceNotExists(t, member2Id, "Member")
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting dho document")
 	cursor = "cursor11"
 	err = cache.DeleteDocument(dhoDoc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, dhoHash, "Dho")
+	assertInstanceNotExists(t, dhoId, "Dho")
 	assertCursor(t, cursor)
 
 }
@@ -756,7 +862,7 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 
 	err = cache.DeleteDocument(chainDoc1, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, hash, "VoteTally")
+	assertInstanceNotExists(t, chainDoc1Id, "VoteTally")
 	assertCursor(t, cursor)
 
 }
@@ -934,7 +1040,7 @@ func TestMissingCoreEdge(t *testing.T) {
 	t.Log("Delete core edge document")
 	err = cache.DeleteDocument(period1Doc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, period1Hash, "Period")
+	assertInstanceNotExists(t, period1Id, "Period")
 	assertCursor(t, cursor)
 
 	t.Log("Verify assignment 2 has a nil core edge")
@@ -961,19 +1067,19 @@ func TestMissingCoreEdge(t *testing.T) {
 	cursor = "cursor7"
 	err = cache.DeleteDocument(assignment1, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, hash, "Assignment")
+	assertInstanceNotExists(t, assignment1Id, "Assignment")
 	assertCursor(t, cursor)
 
 	cursor = "cursor8"
 	err = cache.DeleteDocument(assignment2, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, hash2, "Assignment")
+	assertInstanceNotExists(t, assignment2Id, "Assignment")
 	assertCursor(t, cursor)
 
 	cursor = "cursor9"
 	err = cache.DeleteDocument(period1Doc, cursor)
 	assert.NilError(t, err)
-	assertInstanceNotExists(t, period1Hash, "Period")
+	assertInstanceNotExists(t, period1Id, "Period")
 	assertCursor(t, cursor)
 
 }
@@ -1984,8 +2090,8 @@ func TestCustomInterfaces(t *testing.T) {
 	cursor = "cursor7"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "vote",
-		From: assignment3Hash,
-		To:   voteHash,
+		From: assignment3Id,
+		To:   voteId,
 	}, false, cursor)
 	assert.NilError(t, err)
 
@@ -3111,8 +3217,8 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	cursor = "cursor7"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "extension",
-		From: assignment1Hash,
-		To:   voteHash,
+		From: assignment1Id,
+		To:   voteId,
 	}, false, cursor)
 	assert.NilError(t, err)
 
@@ -3647,8 +3753,8 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	cursor = "cursor7"
 	err = cache.MutateEdge(&domain.ChainEdge{
 		Name: "vote",
-		From: assignment1Hash,
-		To:   voteHash,
+		From: assignment1Id,
+		To:   voteId,
 	}, false, cursor)
 	assert.ErrorContains(t, err, "For type AssigProp to implement interface Votable the field vote must have type")
 
@@ -3664,17 +3770,17 @@ func assertCursor(t *testing.T, cursor string) {
 func assertInstance(t *testing.T, expected *gql.SimplifiedInstance) {
 	actualType, err := cache.Schema.GetSimplifiedType(expected.SimplifiedType.Name)
 	assert.NilError(t, err)
-	actual, err := cache.GetDocumentInstance(expected.GetValue("hash"), actualType, nil)
+	actual, err := cache.GetDocumentInstance(expected.GetValue("docId"), actualType, nil)
 	assert.NilError(t, err)
 	// fmt.Println("Expected: ", expected)
 	// fmt.Println("Actual: ", actual)
 	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
 
-func assertInstanceNotExists(t *testing.T, hash, typeName string) {
+func assertInstanceNotExists(t *testing.T, docId, typeName string) {
 	actualType, err := cache.Schema.GetSimplifiedType(typeName)
 	assert.NilError(t, err)
-	actual, err := cache.GetDocumentInstance(hash, actualType, nil)
+	actual, err := cache.GetDocumentInstance(docId, actualType, nil)
 	assert.NilError(t, err)
 	assert.Assert(t, actual == nil)
 }

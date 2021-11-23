@@ -12,6 +12,8 @@ import (
 
 func AssertSimplifiedInstance(t *testing.T, actual, expected *gql.SimplifiedInstance) {
 	AssertSimplifiedType(t, actual.SimplifiedType, expected.SimplifiedType)
+	// fmt.Println("actual:", actual)
+	// fmt.Println("expected:", expected)
 	assert.Equal(t, len(actual.Values), len(expected.Values))
 
 	for name := range expected.Values {

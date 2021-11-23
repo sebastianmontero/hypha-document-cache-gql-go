@@ -12,7 +12,7 @@ import (
 
 const CursorIdName string = "id"
 const CursorIdValue string = "c1"
-const DocumentIdName string = "hash"
+const DocumentIdName string = "docId"
 
 var log *slog.Log
 
@@ -168,65 +168,69 @@ func (m *Doccache) GetCursorInstance(cursorId interface{}, simplifiedType *gql.S
 	return m.client.GetOne(CursorIdName, cursorId, simplifiedType, projection)
 }
 
-func (m *Doccache) GetDocumentBaseInstances(hashes []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
-	return m.client.GetBaseInstances(DocumentIdName, hashes, simplifiedType, projection)
+func (m *Doccache) GetDocumentBaseInstances(ids []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
+	return m.client.GetBaseInstances(DocumentIdName, ids, simplifiedType, projection)
+}
+
+func (m *Doccache) GetDocumentBaseInstancesByHash(hashes []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
+	return m.client.GetBaseInstances("hash", hashes, simplifiedType, projection)
 }
 
 //StoreDocument Creates a new document or updates its certificates
 func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
+		return fmt.Errorf("failed to store document with docId: %v, error building instance from chain doc: %v", chainDoc.ID, err)
 	}
 	instance := parsedDoc.Instance
 	newSimplifiedType := instance.SimplifiedType
 	currentSimplifiedType, err := m.Schema.GetSimplifiedType(newSimplifiedType.Name)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error getting simplified type from schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error getting simplified type from schema: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.AddCoreEdges(parsedDoc)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error adding core edges: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error adding core edges: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 
 	err = m.config.LogicalIds.ConfigureLogicalIds(newSimplifiedType.SimplifiedBaseType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, unable to configure logical ids, error: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, unable to configure logical ids, error: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.config.Interfaces.ApplyInterfaces(newSimplifiedType, currentSimplifiedType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, unable to apply interfaces, error: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, unable to apply interfaces, error: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 
 	updateOp, err := m.updateSchemaType(newSimplifiedType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error updating schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error updating schema: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	var oldInstance *gql.SimplifiedInstance
 	if updateOp != gql.SchemaUpdateOp_Created {
-		oldInstance, err = m.GetDocumentInstance(instance.GetValue("hash"), currentSimplifiedType, currentSimplifiedType.GetCoreFields())
+		oldInstance, err = m.GetDocumentInstance(instance.GetValue(DocumentIdName), currentSimplifiedType, currentSimplifiedType.GetCoreFields())
 		if err != nil {
-			return fmt.Errorf("failed to store document with hash: %v of type: %v, error fetching old instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to store document with docId: %v of type: %v, error fetching old instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	}
 
 	if oldInstance == nil {
-		log.Infof("Creating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		log.Infof("Creating document: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 		err = m.mutate(instance.AddMutation(false), cursor)
 		if err != nil {
-			return fmt.Errorf("failed to create document with hash: %v of type: %v, error inserting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to create document with docId: %v of type: %v, error inserting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	} else {
 		//TODO: handle certificates
-		log.Infof("Updating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		log.Infof("Updating document: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 		mutation, err := instance.UpdateMutation(DocumentIdName, oldInstance)
 		fmt.Println("Update mutation: ", mutation)
 		if err != nil {
-			return fmt.Errorf("failed to update document with hash: %v of type: %v, error generating update mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to update document with docId: %v of type: %v, error generating update mutation: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 		err = m.mutate(mutation, cursor)
 		if err != nil {
-			return fmt.Errorf("failed to update document with hash: %v of type: %v, error updating instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to update document with docId: %v of type: %v, error updating instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	}
 
@@ -243,7 +247,7 @@ func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
 	for _, checksumField := range parsedDoc.ChecksumFields {
 		checksums = append(checksums, newInstance.GetValue(checksumField))
 	}
-	instances, err := m.GetDocumentBaseInstances(checksums, gql.DocumentSimplifiedInterface.SimplifiedBaseType, nil)
+	instances, err := m.GetDocumentBaseInstancesByHash(checksums, gql.DocumentSimplifiedInterface.SimplifiedBaseType, nil)
 	if err != nil {
 		return fmt.Errorf("failed getting core edge documents, for document: %v of type: %v, error: %v", newInstance.GetValue("hash"), newInstance.GetValue("type"), err)
 	}

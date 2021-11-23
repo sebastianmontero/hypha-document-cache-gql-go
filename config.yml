@@ -1,49 +1,49 @@
-contract-name: dao.hypha
+contract-name: hasheddocgrh
 doc-table-name: documents
 edge-table-name: edges
 firehose-endpoint: localhost:9000
-eos-endpoint: https://telos.caleos.io
+eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
 dgraph-alpha-http-port: 8080
 prometheus-port: 2114
-start-block: 136860100
+start-block: 141980932
 heart-beat-frequency: 100
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-type-mappings:
-  - type: vote.tally
-    labels:
-      pass:
-        - vote_power
-      fail:
-        - vote_power
-custom-interfaces:
-  - name: Votable #New type so use name to use in GQL
-    fields:
-      - content-group: ballot
-        name: expiration
-        type: time_point
-        signature: true # used to identify votable types
-      - content-group: details
-        name: title
-        type: string
-      - content-group: details
-        name: description
-        type: string
-      - name: vote
-        type: vote
-      - name: votetally
-        type: vote.tally
-    types:
-      - payout
-      - assignment
-      - assignbadge
-      - edit
-      - suspend
+# type-mappings:
+#   - type: vote.tally
+#     labels:
+#       pass:
+#         - vote_power
+#       fail:
+#         - vote_power
+# custom-interfaces:
+#   - name: Votable #New type so use name to use in GQL
+#     fields:
+#       - content-group: ballot
+#         name: expiration
+#         type: time_point
+#         signature: true # used to identify votable types
+#       - content-group: details
+#         name: title
+#         type: string
+#       - content-group: details
+#         name: description
+#         type: string
+#       - name: vote
+#         type: vote
+#       - name: votetally
+#         type: vote.tally
+#     types:
+#       - payout
+#       - assignment
+#       - assignbadge
+#       - edit
+#       - suspend
 
-logical-ids:
-  - type: member #Existing type use name from orginal chain doc
-    ids:
-      - content-group: details
-        name: member
-        type: name
+# logical-ids:
+#   - type: member #Existing type use name from orginal chain doc
+#     ids:
+#       - content-group: details
+#         name: member
+#         type: name

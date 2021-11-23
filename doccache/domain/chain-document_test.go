@@ -129,6 +129,8 @@ func TestToParsedDoc(t *testing.T) {
 			gql.DocumentSimplifiedInterface,
 		),
 		map[string]interface{}{
+			"docId":                          "0",
+			"docId_i":                        0,
 			"hash":                           "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -280,6 +282,8 @@ func TestToParsedDocDeduceType(t *testing.T) {
 			gql.DocumentSimplifiedInterface,
 		),
 		map[string]interface{}{
+			"docId":            "0",
+			"docId_i":          0,
 			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -331,7 +335,7 @@ func TestToParsedDocDeduceTypeFailsForMissingFields(t *testing.T) {
 		},
 	}
 	_, err := chainDoc1.ToParsedDoc(typeMappings)
-	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
+	assert.ErrorContains(t, err, "document with ID: 0 does not have a type, and couldn't deduce from typeMappings")
 
 }
 
@@ -400,6 +404,8 @@ func TestToParsedDocDotNamedType(t *testing.T) {
 			gql.DocumentSimplifiedInterface,
 		),
 		map[string]interface{}{
+			"docId":            "0",
+			"docId_i":          0,
 			"hash":             "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e",
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -444,7 +450,7 @@ func TestToParsedDocShouldFailForNoContentGroupLabel(t *testing.T) {
 		},
 	}
 	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
-	assert.ErrorContains(t, err, "failed to get content_group_label for content group: 0 in document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e, err: content group not found")
+	assert.ErrorContains(t, err, "failed to get content_group_label for content group: 0 in document with ID: 0, err: content group not found")
 
 }
 
@@ -507,7 +513,7 @@ func TestToParsedDocShouldFailForNoType(t *testing.T) {
 		},
 	}
 	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
-	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
+	assert.ErrorContains(t, err, "document with ID: 0 does not have a type, and couldn't deduce from typeMappings")
 
 	typeMappings := map[string][]string{
 		"VoteTally": {
@@ -516,7 +522,7 @@ func TestToParsedDocShouldFailForNoType(t *testing.T) {
 		},
 	}
 	_, err = chainDoc1.ToParsedDoc(typeMappings)
-	assert.ErrorContains(t, err, "document with hash: d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e does not have a type")
+	assert.ErrorContains(t, err, "document with ID: 0 does not have a type, and couldn't deduce from typeMappings")
 }
 
 func TestChainDocUnmarshall(t *testing.T) {

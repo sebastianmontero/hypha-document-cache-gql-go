@@ -151,7 +151,7 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 	for i, contentGroup := range m.ContentGroups {
 		contentGroupLabel, err := GetContentGroupLabel(contentGroup)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get content_group_label for content group: %v in document with hash: %v, err: %v", i, m.Hash, err)
+			return nil, fmt.Errorf("failed to get content_group_label for content group: %v in document with ID: %v, err: %v", i, m.ID, err)
 		}
 		prefix := GetFieldPrefix(contentGroupLabel)
 		for _, content := range contentGroup {
@@ -167,7 +167,7 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 				}
 				value, err := content.GetGQLValue()
 				if err != nil {
-					return nil, fmt.Errorf("failed to get gql value content: %v name for doc with hash: %v, error: %v", name, m.Hash, err)
+					return nil, fmt.Errorf("failed to get gql value content: %v name for doc with ID: %v, error: %v", name, m.ID, err)
 				}
 				values[name] = value
 			}
@@ -177,7 +177,7 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 	if !ok {
 		typeName = deduceDocType(toUntypedMap(fields), typeMappings)
 		if typeName == "" {
-			return nil, fmt.Errorf("document with hash: %v does not have a type, and couldn't deduce from typeMappings", m.Hash)
+			return nil, fmt.Errorf("document with ID: %v does not have a type, and couldn't deduce from typeMappings", m.ID)
 		}
 	}
 
@@ -279,7 +279,7 @@ func toUntypedMap(typed map[string]*gql.SimplifiedField) map[string]*gql.Simplif
 }
 
 func (m *ChainDocument) String() string {
-	return fmt.Sprintf("ChainDocument{ID: %v, Hash: %v, CreatedDate: %v, Creator: %v, Contents: %v, Certificates: %v}", m.ID, m.Hash, m.CreatedDate, m.Creator, m.ContentGroups, m.Certificates)
+	return fmt.Sprintf("ChainDocument{ID: %v, CreatedDate: %v, Creator: %v, Contents: %v, Certificates: %v}", m.ID, m.CreatedDate, m.Creator, m.ContentGroups, m.Certificates)
 }
 
 func FormatDateTime(datetime string) string {
