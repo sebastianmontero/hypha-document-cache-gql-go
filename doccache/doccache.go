@@ -278,17 +278,17 @@ func GetEdgeValue(docId interface{}) map[string]interface{} {
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
+		return fmt.Errorf("failed to delete document with docId: %v, error building instance from chain doc: %v", chainDoc.ID, err)
 	}
 	instance := parsedDoc.Instance
-	log.Infof("Deleting Node: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+	log.Infof("Deleting Node: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 	mutation, err := instance.DeleteMutation(DocumentIdName)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error creating delete mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error creating delete mutation: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.mutate(mutation, cursor)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error deleting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error deleting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	return nil
 }
