@@ -48,3 +48,13 @@ logical-ids:
       - content-group: details
         name: member
         type: name
+  - type: dao #Existing type use name from orginal chain doc
+    ids:
+      - content-group: details
+        name: dao_name
+        type: name
+  - type: dho #Existing type use name from orginal chain doc
+    ids:
+      - content-group: details
+        name: root_node
+        type: name
