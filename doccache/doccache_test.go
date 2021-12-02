@@ -21,6 +21,7 @@ var cfg *config.Config
 var dg *dgraph.Dgraph
 var cache *doccache.Doccache
 var admin *gql.Admin
+var client *gql.Client
 
 var userType = gql.NewSimplifiedType(
 	"User",
@@ -83,7 +84,7 @@ func setUp(configPath string) {
 		log.Fatal(err, "Failed to load configuration")
 	}
 	admin = gql.NewAdmin(cfg.GQLAdminURL)
-	client := gql.NewClient(cfg.GQLClientURL)
+	client = gql.NewClient(cfg.GQLClientURL)
 	dg, err = dgraph.New("")
 	if err != nil {
 		log.Fatal(err, "Unable to create dgraph")
@@ -99,9 +100,20 @@ func setUp(configPath string) {
 	}
 }
 
+func TestReloadSchema(t *testing.T) {
+	setUp("./config-no-special-config.yml")
+	cache2, err := doccache.New(dg, admin, client, cfg, nil)
+	if err != nil {
+		log.Fatal(err, "Failed creating DocCache")
+	}
+
+	assertDoccacheConfig(t, cache2, cfg)
+	assert.Equal(t, cache2.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+}
+
 func TestOpCycle(t *testing.T) {
 	setUp("./config-no-special-config.yml")
-	assertDoccacheConfig(t, cfg)
+	assertDoccacheConfig(t, cache, cfg)
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing period 1 document")
@@ -3769,7 +3781,7 @@ func assertCursor(t *testing.T, cursor string) {
 	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
 
-func assertDoccacheConfig(t *testing.T, cfg *config.Config) {
+func assertDoccacheConfig(t *testing.T, cache *doccache.Doccache, cfg *config.Config) {
 	expected := gql.NewSimplifiedInstance(
 		gql.DoccacheConfigSimplifiedType,
 		map[string]interface{}{
