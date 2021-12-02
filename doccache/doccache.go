@@ -124,6 +124,11 @@ func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 
 func (m *Doccache) updateDoccacheConfig() error {
 
+	_, err := m.updateSchemaType(gql.DoccacheConfigSimplifiedType)
+	if err != nil {
+		return fmt.Errorf("failed to update schema with the doccache config type, type: %v, error : %v", gql.DoccacheConfigSimplifiedType, err)
+	}
+
 	doccacheConfig := gql.NewSimplifiedInstance(
 		gql.DoccacheConfigSimplifiedType,
 		map[string]interface{}{
@@ -134,7 +139,7 @@ func (m *Doccache) updateDoccacheConfig() error {
 			"edgesTable":     m.config.EdgeTableName,
 		},
 	)
-	err := m.client.Mutate(doccacheConfig.AddMutation(true))
+	err = m.client.Mutate(doccacheConfig.AddMutation(true))
 	if err != nil {
 		return fmt.Errorf("failed to update doccache config, value: %v, error: %v", doccacheConfig, err)
 	}
