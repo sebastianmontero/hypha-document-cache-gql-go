@@ -72,6 +72,14 @@ const BaseSchema = `
 		cursor: String!
 	}
 
+	type DoccacheConfig {
+		id: String! @id @search(by: [exact])
+		contract: String!
+		eosEndpoint: String!
+		documentsTable: String!
+		edgesTable: String!
+	}
+
 	type TypeVersion {
 		type: String! @search(by: [exact])
 		version: String @search(by: [exact])
@@ -99,6 +107,41 @@ var CursorSimplifiedType = &SimplifiedType{
 			},
 			"cursor": {
 				Name:    "cursor",
+				Type:    "String",
+				NonNull: true,
+			},
+		},
+	},
+}
+
+var DoccacheConfigSimplifiedType = &SimplifiedType{
+	SimplifiedBaseType: &SimplifiedBaseType{
+		Name: "DoccacheConfig",
+		Fields: map[string]*SimplifiedField{
+			"id": {
+				Name:    "id",
+				IsID:    true,
+				Type:    "String",
+				Index:   "exact",
+				NonNull: true,
+			},
+			"contract": {
+				Name:    "contract",
+				Type:    "String",
+				NonNull: true,
+			},
+			"eosEndpoint": {
+				Name:    "eosEndpoint",
+				Type:    "String",
+				NonNull: true,
+			},
+			"documentsTable": {
+				Name:    "documentsTable",
+				Type:    "String",
+				NonNull: true,
+			},
+			"edgesTable": {
+				Name:    "edgesTable",
 				Type:    "String",
 				NonNull: true,
 			},

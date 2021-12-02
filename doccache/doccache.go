@@ -12,6 +12,7 @@ import (
 
 const CursorIdName string = "id"
 const CursorIdValue string = "c1"
+const DoccacheConfigIdValue string = "dc1"
 const DocumentIdName string = "docId"
 
 var log *slog.Log
@@ -38,6 +39,10 @@ func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, config *config
 	}
 
 	err := m.PrepareSchema()
+	if err != nil {
+		return nil, err
+	}
+	err = m.updateDoccacheConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +122,25 @@ func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 	return cursor, nil
 }
 
+func (m *Doccache) updateDoccacheConfig() error {
+
+	doccacheConfig := gql.NewSimplifiedInstance(
+		gql.DoccacheConfigSimplifiedType,
+		map[string]interface{}{
+			"id":             DoccacheConfigIdValue,
+			"contract":       m.config.ContractName,
+			"eosEndpoint":    m.config.EosEndpoint,
+			"documentsTable": m.config.DocTableName,
+			"edgesTable":     m.config.EdgeTableName,
+		},
+	)
+	err := m.client.Mutate(doccacheConfig.AddMutation(true))
+	if err != nil {
+		return fmt.Errorf("failed to update doccache config, value: %v, error: %v", doccacheConfig, err)
+	}
+	return nil
+}
+
 func (m *Doccache) mutate(mutation *gql.Mutation, cursor string) error {
 	m.Cursor.SetValue("cursor", cursor)
 	cursorMutation := m.Cursor.AddMutation(true)
@@ -166,6 +190,10 @@ func (m *Doccache) GetDocumentInstance(hash interface{}, simplifiedType *gql.Sim
 
 func (m *Doccache) GetCursorInstance(cursorId interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
 	return m.client.GetOne(CursorIdName, cursorId, simplifiedType, projection)
+}
+
+func (m *Doccache) GetDoccacheConfigInstance() (*gql.SimplifiedInstance, error) {
+	return m.client.GetOne("id", DoccacheConfigIdValue, gql.DoccacheConfigSimplifiedType, nil)
 }
 
 func (m *Doccache) GetDocumentBaseInstances(ids []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
@@ -278,17 +306,17 @@ func GetEdgeValue(docId interface{}) map[string]interface{} {
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
+		return fmt.Errorf("failed to delete document with docId: %v, error building instance from chain doc: %v", chainDoc.ID, err)
 	}
 	instance := parsedDoc.Instance
-	log.Infof("Deleting Node: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+	log.Infof("Deleting Node: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 	mutation, err := instance.DeleteMutation(DocumentIdName)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error creating delete mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error creating delete mutation: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.mutate(mutation, cursor)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error deleting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error deleting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	return nil
 }

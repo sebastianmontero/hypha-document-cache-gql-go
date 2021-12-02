@@ -17,9 +17,11 @@ import (
 	"gotest.tools/assert"
 )
 
+var cfg *config.Config
 var dg *dgraph.Dgraph
 var cache *doccache.Doccache
 var admin *gql.Admin
+var client *gql.Client
 
 var userType = gql.NewSimplifiedType(
 	"User",
@@ -77,12 +79,12 @@ func afterAll() {
 
 func setUp(configPath string) {
 	var err error
-	config, err := config.LoadConfig(configPath)
+	cfg, err = config.LoadConfig(configPath)
 	if err != nil {
 		log.Fatal(err, "Failed to load configuration")
 	}
-	admin = gql.NewAdmin(config.GQLAdminURL)
-	client := gql.NewClient(config.GQLClientURL)
+	admin = gql.NewAdmin(cfg.GQLAdminURL)
+	client = gql.NewClient(cfg.GQLClientURL)
 	dg, err = dgraph.New("")
 	if err != nil {
 		log.Fatal(err, "Unable to create dgraph")
@@ -92,14 +94,26 @@ func setUp(configPath string) {
 		log.Fatal(err, "Unable to drop all")
 	}
 	time.Sleep(time.Second * 2)
-	cache, err = doccache.New(dg, admin, client, config, nil)
+	cache, err = doccache.New(dg, admin, client, cfg, nil)
 	if err != nil {
 		log.Fatal(err, "Failed creating DocCache")
 	}
 }
 
+func TestReloadSchema(t *testing.T) {
+	setUp("./config-no-special-config.yml")
+	cache2, err := doccache.New(dg, admin, client, cfg, nil)
+	if err != nil {
+		log.Fatal(err, "Failed creating DocCache")
+	}
+
+	assertDoccacheConfig(t, cache2, cfg)
+	assert.Equal(t, cache2.Cursor.GetValue("id").(string), doccache.CursorIdValue)
+}
+
 func TestOpCycle(t *testing.T) {
 	setUp("./config-no-special-config.yml")
+	assertDoccacheConfig(t, cache, cfg)
 	assert.Equal(t, cache.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 
 	t.Logf("Storing period 1 document")
@@ -3763,6 +3777,22 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 func assertCursor(t *testing.T, cursor string) {
 	expected := gql.NewCursorInstance(doccache.CursorIdValue, cursor)
 	actual, err := cache.GetCursorInstance(doccache.CursorIdValue, gql.CursorSimplifiedType, nil)
+	assert.NilError(t, err)
+	tutil.AssertSimplifiedInstance(t, actual, expected)
+}
+
+func assertDoccacheConfig(t *testing.T, cache *doccache.Doccache, cfg *config.Config) {
+	expected := gql.NewSimplifiedInstance(
+		gql.DoccacheConfigSimplifiedType,
+		map[string]interface{}{
+			"id":             "dc1",
+			"contract":       cfg.ContractName,
+			"eosEndpoint":    cfg.EosEndpoint,
+			"documentsTable": cfg.DocTableName,
+			"edgesTable":     cfg.EdgeTableName,
+		},
+	)
+	actual, err := cache.GetDoccacheConfigInstance()
 	assert.NilError(t, err)
 	tutil.AssertSimplifiedInstance(t, actual, expected)
 }
