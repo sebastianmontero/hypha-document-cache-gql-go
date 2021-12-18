@@ -4,13 +4,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
+
+	"github.com/iancoleman/strcase"
 )
 
 //ChainEdge domain object
 type ChainEdge struct {
-	Name string `json:"edge_name,omitempty"`
-	From string `json:"from_node,omitempty"`
-	To   string `json:"to_node,omitempty"`
+	Name        string `json:"edge_name,omitempty"`
+	From        string `json:"from_node,omitempty"`
+	To          string `json:"to_node,omitempty"`
+	DocEdgeName string
 }
 
 func (m *ChainEdge) UnmarshalJSON(b []byte) error {
@@ -21,13 +25,13 @@ func (m *ChainEdge) UnmarshalJSON(b []byte) error {
 	m.Name = data["edge_name"].(string)
 	m.From = strconv.FormatUint(uint64(data["from_node"].(float64)), 10)
 	m.To = strconv.FormatUint(uint64(data["to_node"].(float64)), 10)
-
+	m.DocEdgeName = strcase.ToLowerCamel(strings.ReplaceAll(m.Name, ".", "_"))
 	return nil
 }
 
 func (m *ChainEdge) GetEdgeRef(docId interface{}) map[string]interface{} {
 	return map[string]interface{}{
-		m.Name: []map[string]interface{}{{"docId": docId}},
+		m.DocEdgeName: []map[string]interface{}{{"docId": docId}},
 	}
 }
 

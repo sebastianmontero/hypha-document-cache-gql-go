@@ -334,18 +334,18 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting instances, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed getting instances, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 
 	fromInstance, ok := instances[chainEdge.From]
 	if !ok {
-		log.Errorf(nil, "FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		log.Errorf(nil, "FROM node of the relationship: [Edge: %v (%v), From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 		return nil
 	}
 
 	toInstance, ok := instances[chainEdge.To]
 	if !ok {
-		log.Errorf(nil, "TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		log.Errorf(nil, "TO node of the relationship: [Edge: %v (%v), From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 		return nil
 	}
 
@@ -354,16 +354,16 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 
 	fromType, err := m.Schema.GetSimplifiedType(fromTypeName)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting type: %v, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, fromInstance.SimplifiedBaseType.Name, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed getting type: %v, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, fromInstance.SimplifiedBaseType.Name, err)
 	}
 	edgeType := toTypeName
-	currentEdgeField := fromType.GetField(chainEdge.Name)
+	currentEdgeField := fromType.GetField(chainEdge.DocEdgeName)
 	if currentEdgeField != nil && currentEdgeField.Type != toTypeName {
 		edgeType = gql.DocumentSimplifiedInterface.Name
 	}
-	err = m.updateSchemaEdge(fromTypeName, chainEdge.Name, edgeType)
+	err = m.updateSchemaEdge(fromTypeName, chainEdge.DocEdgeName, edgeType)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 
 	var set, remove map[string]interface{}
@@ -374,12 +374,12 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 	}
 	mutation, err := fromType.UpdateMutation(DocumentIdName, chainEdge.From, set, remove)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed creating edge mutation, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed creating edge mutation, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
-	log.Infof("Mutating [Edge: %v, From: %v, To: %v] Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+	log.Infof("Mutating [Edge: %v (%v), From: %v, To: %v] Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 	err = m.mutate(mutation, cursor)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed storing edge, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed storing edge, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 	return nil
 }
