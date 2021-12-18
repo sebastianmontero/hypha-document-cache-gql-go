@@ -56,7 +56,7 @@ const DocumentFields = `
 
 const BaseSchema = `
 
-	type Certificate {
+	type DocumentCertificate {
 		id: ID!
 		certifier: String! @search(by: [exact])
 		notes: String! @search(by: [term])
