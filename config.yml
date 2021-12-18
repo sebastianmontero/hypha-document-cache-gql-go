@@ -1,7 +1,8 @@
 contract-name: hasheddocgrh
 doc-table-name: documents
 edge-table-name: edges
-firehose-endpoint: localhost:9000
+#firehose-endpoint: localhost:9000
+firehose-endpoint: fh.tekit.io:443
 eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
