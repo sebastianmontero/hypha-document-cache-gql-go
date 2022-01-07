@@ -18,13 +18,6 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		NonNull: true,
 		Index:   "int64",
 	},
-	"hash": {
-		IsID:    true,
-		Name:    "hash",
-		Type:    "String",
-		NonNull: true,
-		Index:   "exact",
-	},
 	"type": {
 		Name:    "type",
 		Type:    "String",
@@ -43,25 +36,31 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		NonNull: true,
 		Index:   "hour",
 	},
+	"updatedDate": {
+		Name:    "updatedDate",
+		Type:    "DateTime",
+		NonNull: true,
+		Index:   "hour",
+	},
+	"contract": {
+		Name:    "contract",
+		Type:    "String",
+		NonNull: true,
+		Index:   "exact",
+	},
 }
 
 const DocumentFields = `
 		docId: String! @id @search(by: [exact])
 		docId_i: Int64! @search(by: [int64])
-		hash: String! @id @search(by: [exact])
 		type: String! @search(by: [exact])
 		creator: String! @search(by: [exact])
 		createdDate: DateTime! @search(by: [hour])
+		updatedDate: DateTime! @search(by: [hour])
+		contract: String! @search(by: [exact])
 `
 
 const BaseSchema = `
-
-	type DocumentCertificate {
-		id: ID!
-		certifier: String! @search(by: [exact])
-		notes: String! @search(by: [term])
-		certification_date: DateTime! @search(by: [hour])
-	}
 
 	interface Document {` +
 	DocumentFields + `

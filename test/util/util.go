@@ -14,7 +14,7 @@ func AssertSimplifiedInstance(t *testing.T, actual, expected *gql.SimplifiedInst
 	AssertSimplifiedType(t, actual.SimplifiedType, expected.SimplifiedType)
 	// fmt.Println("actual:", actual)
 	// fmt.Println("expected:", expected)
-	assert.Equal(t, len(actual.Values), len(expected.Values))
+	assert.Equal(t, len(actual.Values), len(expected.Values), "Different number of values expected: %v, actual: %v", expected.Values, actual.Values)
 
 	for name := range expected.Values {
 		field := expected.SimplifiedType.GetField(name)

@@ -42,7 +42,7 @@ custom-interfaces:
     fields:
       - content-group: details
         name: profile
-        type: profile.data
+        type: checksum256
         signature: true
       - content-group: details
         name: account

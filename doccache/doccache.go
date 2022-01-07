@@ -189,8 +189,8 @@ func (m *Doccache) updateSchemaEdge(typeName, edgeName, edgeType string) error {
 	return nil
 }
 
-func (m *Doccache) GetDocumentInstance(hash interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
-	return m.client.GetOne(DocumentIdName, hash, simplifiedType, projection)
+func (m *Doccache) GetDocumentInstance(docId interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
+	return m.client.GetOne(DocumentIdName, docId, simplifiedType, projection)
 }
 
 func (m *Doccache) GetCursorInstance(cursorId interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
@@ -205,11 +205,7 @@ func (m *Doccache) GetDocumentBaseInstances(ids []interface{}, simplifiedType *g
 	return m.client.GetBaseInstances(DocumentIdName, ids, simplifiedType, projection)
 }
 
-func (m *Doccache) GetDocumentBaseInstancesByHash(hashes []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
-	return m.client.GetBaseInstances("hash", hashes, simplifiedType, projection)
-}
-
-//StoreDocument Creates a new document or updates its certificates
+//StoreDocument Creates or updates document
 func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
@@ -220,10 +216,6 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 	currentSimplifiedType, err := m.Schema.GetSimplifiedType(newSimplifiedType.Name)
 	if err != nil {
 		return fmt.Errorf("failed to store document with docId: %v of type: %v, error getting simplified type from schema: %v", chainDoc.ID, instance.GetValue("type"), err)
-	}
-	err = m.AddCoreEdges(parsedDoc)
-	if err != nil {
-		return fmt.Errorf("failed to store document with docId: %v of type: %v, error adding core edges: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 
 	err = m.config.LogicalIds.ConfigureLogicalIds(newSimplifiedType.SimplifiedBaseType)
@@ -254,7 +246,6 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 			return fmt.Errorf("failed to create document with docId: %v of type: %v, error inserting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	} else {
-		//TODO: handle certificates
 		log.Infof("Updating document: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 		mutation, err := instance.UpdateMutation(DocumentIdName, oldInstance)
 		fmt.Println("Update mutation: ", mutation)
@@ -267,39 +258,6 @@ func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) 
 		}
 	}
 
-	return nil
-}
-
-func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
-	newInstance := parsedDoc.Instance
-	newType := newInstance.SimplifiedType
-	if !parsedDoc.HasCoreEdges() {
-		return nil
-	}
-	checksums := make([]interface{}, 0, parsedDoc.NumCoreEdges())
-	for _, checksumField := range parsedDoc.ChecksumFields {
-		checksums = append(checksums, newInstance.GetValue(checksumField))
-	}
-	instances, err := m.GetDocumentBaseInstancesByHash(checksums, gql.DocumentSimplifiedInterface.SimplifiedBaseType, nil)
-	if err != nil {
-		return fmt.Errorf("failed getting core edge documents, for document: %v of type: %v, error: %v", newInstance.GetValue("hash"), newInstance.GetValue("type"), err)
-	}
-	for _, field := range parsedDoc.ChecksumFields {
-		hash := newInstance.GetValue(field)
-		instance := instances[hash]
-		if instance != nil {
-			coreEdgeFieldName := domain.GetCoreEdgeName(field)
-			newType.SetField(coreEdgeFieldName, &gql.SimplifiedField{
-				Name: coreEdgeFieldName,
-				Type: instance.GetValue("type").(string),
-			})
-			newInstance.SetValue(coreEdgeFieldName, GetEdgeValue(instance.GetValue("docId")))
-		} else {
-			log.Errorf(nil, "core edge: %v with hash: %v not found for type: %v with hash: %v", field, hash, newType.Name, newInstance.GetValue("hash"))
-			// return fmt.Errorf("core edge with hash: %v not found", hash)
-		}
-
-	}
 	return nil
 }
 
