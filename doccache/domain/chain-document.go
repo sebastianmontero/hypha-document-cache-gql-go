@@ -125,12 +125,16 @@ type ChainDocument struct {
 	ContentGroups [][]*ChainContent `json:"content_groups,omitempty"`
 }
 
+func (m *ChainDocument) GetDocId() string {
+	return strconv.FormatUint(m.ID, 10)
+}
+
 func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDoc, error) {
 
 	fields := make(map[string]*gql.SimplifiedField)
 	checksumFields := make([]string, 0)
 	values := map[string]interface{}{
-		"docId":       strconv.FormatUint(m.ID, 10),
+		"docId":       m.GetDocId(),
 		"docId_i":     m.ID,
 		"creator":     m.Creator,
 		"createdDate": FormatDateTime(m.CreatedDate),
