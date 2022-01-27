@@ -111,6 +111,11 @@ func TestReloadSchema(t *testing.T) {
 	assert.Equal(t, cache2.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 }
 
+func TestDoccacheConfigIsProperlyConfiguredForNoElasticEndpoint(t *testing.T) {
+	setUp("./config-no-elastic-endpoint.yml")
+	assertDoccacheConfig(t, cache, cfg)
+}
+
 func TestOpCycle(t *testing.T) {
 	setUp("./config-no-special-config.yml")
 	assertDoccacheConfig(t, cache, cfg)
@@ -3726,11 +3731,13 @@ func assertDoccacheConfig(t *testing.T, cache *doccache.Doccache, cfg *config.Co
 	expected := gql.NewSimplifiedInstance(
 		gql.DoccacheConfigSimplifiedType,
 		map[string]interface{}{
-			"id":             "dc1",
-			"contract":       cfg.ContractName,
-			"eosEndpoint":    cfg.EosEndpoint,
-			"documentsTable": cfg.DocTableName,
-			"edgesTable":     cfg.EdgeTableName,
+			"id":              "dc1",
+			"contract":        cfg.ContractName,
+			"eosEndpoint":     cfg.EosEndpoint,
+			"documentsTable":  cfg.DocTableName,
+			"edgesTable":      cfg.EdgeTableName,
+			"elasticEndpoint": cfg.ElasticEndpoint,
+			"elasticApiKey":   cfg.ElasticApiKey,
 		},
 	)
 	actual, err := cache.GetDoccacheConfigInstance()

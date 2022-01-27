@@ -23,6 +23,8 @@ type Config struct {
 	StartBlock          int64                    `mapstructure:"start-block"`
 	HeartBeatFrequency  uint                     `mapstructure:"heart-beat-frequency"`
 	DfuseApiKey         string                   `mapstructure:"dfuse-api-key"`
+	ElasticEndpoint     string                   `mapstructure:"elastic-endpoint"`
+	ElasticApiKey       string                   `mapstructure:"elastic-api-key"`
 	TypeMappingsRaw     []map[string]interface{} `mapstructure:"type-mappings"`
 	TypeMappings        map[string][]string
 	InterfacesRaw       []map[string]interface{} `mapstructure:"custom-interfaces"`
@@ -232,6 +234,8 @@ func (m *Config) String() string {
 				TypeMappings: %v
 				GQLAdminURL: %v
 				GQLClientURL: %v
+				ElasticEndpoint: %v
+				ElasticApiKey: %v
 			}
 		`,
 		m.ContractName,
@@ -252,6 +256,8 @@ func (m *Config) String() string {
 		m.TypeMappings,
 		m.GQLAdminURL,
 		m.GQLClientURL,
+		m.ElasticEndpoint,
+		m.ElasticApiKey,
 	)
 }
 

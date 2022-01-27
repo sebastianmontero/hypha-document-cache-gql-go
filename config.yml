@@ -10,6 +10,8 @@ dgraph-alpha-http-port: 8080
 prometheus-port: 2114
 start-block: 151824876
 heart-beat-frequency: 100
+elastic-endpoint: https://localhost:9200 #Used only to update the doccache config object
+elastic-api-key: api-key-a2342asdk399 #Used only to update the doccache config object
 #dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
 # type-mappings:
 #   - type: vote.tally

@@ -132,11 +132,13 @@ func (m *Doccache) updateDoccacheConfig() error {
 	doccacheConfig := gql.NewSimplifiedInstance(
 		gql.DoccacheConfigSimplifiedType,
 		map[string]interface{}{
-			"id":             DoccacheConfigIdValue,
-			"contract":       m.config.ContractName,
-			"eosEndpoint":    m.config.EosEndpoint,
-			"documentsTable": m.config.DocTableName,
-			"edgesTable":     m.config.EdgeTableName,
+			"id":              DoccacheConfigIdValue,
+			"contract":        m.config.ContractName,
+			"eosEndpoint":     m.config.EosEndpoint,
+			"documentsTable":  m.config.DocTableName,
+			"edgesTable":      m.config.EdgeTableName,
+			"elasticEndpoint": m.config.ElasticEndpoint,
+			"elasticApiKey":   m.config.ElasticApiKey,
 		},
 	)
 	err = m.client.Mutate(doccacheConfig.AddMutation(true))

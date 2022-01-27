@@ -77,6 +77,8 @@ const BaseSchema = `
 		eosEndpoint: String!
 		documentsTable: String!
 		edgesTable: String!
+		elasticEndpoint: String!
+		elasticApiKey: String!
 	}
 
 	type TypeVersion {
@@ -141,6 +143,16 @@ var DoccacheConfigSimplifiedType = &SimplifiedType{
 			},
 			"edgesTable": {
 				Name:    "edgesTable",
+				Type:    "String",
+				NonNull: true,
+			},
+			"elasticEndpoint": {
+				Name:    "elasticEndpoint",
+				Type:    "String",
+				NonNull: true,
+			},
+			"elasticApiKey": {
+				Name:    "elasticApiKey",
 				Type:    "String",
 				NonNull: true,
 			},
