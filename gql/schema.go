@@ -206,11 +206,18 @@ func CreateInterface(simplifiedInterface *SimplifiedInterface) *ast.Definition {
 func CreateBaseType(kind ast.DefinitionKind, simplifiedBaseType *SimplifiedBaseType) *ast.Definition {
 	var fieldDefs ast.FieldList
 	fieldDefs = addFields(simplifiedBaseType.Fields, fieldDefs)
+	var directives ast.DirectiveList
+	if simplifiedBaseType.WithSubscription {
+		directives = append(directives, &ast.Directive{
+			Name: "withSubscription",
+		})
+	}
 
 	return &ast.Definition{
-		Kind:   kind,
-		Name:   simplifiedBaseType.Name,
-		Fields: fieldDefs,
+		Kind:       kind,
+		Name:       simplifiedBaseType.Name,
+		Fields:     fieldDefs,
+		Directives: directives,
 	}
 }
 
@@ -274,7 +281,10 @@ func DefinitionToString(def *ast.Definition, depth int) string {
 	out.WriteString(fmt.Sprintf("%vDefinition Name:%v\n", indent(depth), def.Name))
 	out.WriteString(fmt.Sprintf("%vInterfaces: %v\n", indent(depth+1), def.Interfaces))
 	out.WriteString(fmt.Sprintf("%vTypes: %v\n\n", indent(depth+1), def.Types))
-	out.WriteString(FieldsToString(def.Fields, depth+1))
+	out.WriteString(fmt.Sprintf("%vDirectives: \n", indent(depth+1)))
+	out.WriteString(DirectivesToString(def.Directives, depth+2))
+	out.WriteString(fmt.Sprintf("%vFields: \n", indent(depth+1)))
+	out.WriteString(FieldsToString(def.Fields, depth+2))
 	return out.String()
 }
 

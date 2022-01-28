@@ -47,6 +47,7 @@ func TestConfigureLogicalIdsNone(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 	}
 	util.AssertSimplifiedType(t, assignmentType, expectedAssignmentType)
@@ -93,6 +94,7 @@ func TestConfigureLogicalIdsSingleId(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 	}
 	util.AssertSimplifiedType(t, dhoType, expectedDhoType)
@@ -150,6 +152,7 @@ func TestConfigureLogicalIdsMultipleIds(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 	}
 	util.AssertSimplifiedType(t, memberType, expectedMemberType)

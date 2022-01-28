@@ -45,6 +45,7 @@ func TestApplyInterfacesNoApplicableInterface(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 	}
 	util.AssertSimplifiedType(t, dhoType, expectedDhoType)
@@ -101,6 +102,7 @@ func TestApplyInterfacesSingleSignatureField(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"User"},
 	}
@@ -139,6 +141,7 @@ func TestApplyInterfacesTypeReferencingInterface(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Taskable"},
 	}
@@ -214,6 +217,7 @@ func TestApplyInterfacesMultipleSignatureFields(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Votable"},
 	}
@@ -252,6 +256,7 @@ func TestApplyInterfacesByType(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Editable"},
 	}
@@ -282,6 +287,7 @@ func TestApplyInterfacesByType(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Editable"},
 	}
@@ -334,6 +340,7 @@ func TestApplyInterfacesByTypeWithSignatureFields(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"User"},
 	}
@@ -437,6 +444,7 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Votable", "User"},
 	}
@@ -491,6 +499,7 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 	}
 	util.AssertSimplifiedType(t, memberProposalType, expectedMemberProposalType)
@@ -532,6 +541,7 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{},
 	}
@@ -638,6 +648,7 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Votable"},
 	}

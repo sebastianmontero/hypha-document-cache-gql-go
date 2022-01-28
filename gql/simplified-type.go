@@ -18,8 +18,9 @@ func NewSimplifiedType(name string, simplifiedFields map[string]*SimplifiedField
 
 	simplifiedType := &SimplifiedType{
 		SimplifiedBaseType: &SimplifiedBaseType{
-			Name:   name,
-			Fields: make(map[string]*SimplifiedField),
+			Name:             name,
+			Fields:           make(map[string]*SimplifiedField),
+			WithSubscription: true,
 		},
 		Interfaces: make([]string, 0),
 	}
@@ -45,8 +46,9 @@ func NewSimplifiedTypeFromType(typeDef *ast.Definition) (*SimplifiedType, error)
 
 	return &SimplifiedType{
 		SimplifiedBaseType: &SimplifiedBaseType{
-			Name:   typeDef.Name,
-			Fields: fields,
+			Name:             typeDef.Name,
+			Fields:           fields,
+			WithSubscription: typeDef.Directives.ForName("withSubscription") != nil,
 		},
 		Interfaces: interfaces,
 	}, nil
@@ -102,8 +104,9 @@ func (m *SimplifiedType) Clone() *SimplifiedType {
 	}
 	return &SimplifiedType{
 		SimplifiedBaseType: &SimplifiedBaseType{
-			Name:   m.Name,
-			Fields: fields,
+			Name:             m.Name,
+			Fields:           fields,
+			WithSubscription: m.WithSubscription,
 		},
 		Interfaces: m.CloneInterfaces(),
 	}

@@ -62,7 +62,7 @@ const DocumentFields = `
 
 const BaseSchema = `
 
-	interface Document {` +
+	interface Document @withSubscription {` +
 	DocumentFields + `
 	}
 
@@ -90,8 +90,9 @@ const BaseSchema = `
 
 var DocumentSimplifiedInterface = &SimplifiedInterface{
 	SimplifiedBaseType: &SimplifiedBaseType{
-		Name:   "Document",
-		Fields: DocumentFieldArgs,
+		Name:             "Document",
+		Fields:           DocumentFieldArgs,
+		WithSubscription: true,
 	},
 }
 

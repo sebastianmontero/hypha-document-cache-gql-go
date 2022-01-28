@@ -1622,6 +1622,7 @@ func TestCustomInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -1737,6 +1738,7 @@ func TestCustomInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -1820,6 +1822,7 @@ func TestCustomInterfaces(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -1948,6 +1951,7 @@ func TestCustomInterfaces(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -2032,6 +2036,7 @@ func TestCustomInterfaces(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2170,6 +2175,7 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -2306,6 +2312,7 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "Editable"},
 	}
@@ -2396,6 +2403,7 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2541,6 +2549,7 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "User"},
 	}
@@ -2632,6 +2641,7 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2783,6 +2793,7 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "User"},
 	}
@@ -2873,6 +2884,7 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2974,6 +2986,7 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 					Index: "exact",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "User"},
 	}
@@ -3075,6 +3088,7 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Extendable"},
 	}
@@ -3154,6 +3168,7 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -3435,6 +3450,7 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -3609,6 +3625,7 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -3690,6 +3707,7 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}

@@ -25,6 +25,7 @@ func TestUpdateSchema(t *testing.T) {
 	currentSchema, err := admin.GetCurrentSchema()
 	assert.NilError(t, err)
 	// fmt.Println("Schema: ", currentSchema)
+	// fmt.Println(gql.DefinitionToString(currentSchema.GetType("Document"), 0))
 	// fmt.Println(gql.DefinitionToString(currentSchema.GetType("Role"), 0))
 	assert.Assert(t, currentSchema.GetType("Role") != nil)
 
