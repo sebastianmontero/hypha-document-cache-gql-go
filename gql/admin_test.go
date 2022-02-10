@@ -662,6 +662,24 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 
 }
 
+// func TestInterfaceExtendsInterfaceSchema(t *testing.T) {
+// 	// schemaDef := "type Person { name: String }"
+// 	schemaDef :=
+// 		`
+// 			interface Role implements Document { ` +
+// 			gql.DocumentFields + `
+// 				name: String
+// 			}
+// 		`
+// 	schema, err := gql.NewSchema(schemaDef, true)
+// 	assert.NilError(t, err)
+// 	// fmt.Println("D Schema: ", schema.String())
+// 	err = admin.UpdateSchema(schema)
+// 	assert.NilError(t, err)
+// 	_, err = admin.GetCurrentSchema()
+// 	assert.NilError(t, err)
+// }
+
 // func TestInterfaceWithMoreGenericTypeThanChild(t *testing.T) {
 // 	// schemaDef := "type Person { name: String }"
 // 	schemaDef :=

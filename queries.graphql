@@ -29,3 +29,20 @@
     }
   }
 }
+
+
+query{
+  queryAssignment(first:10, offset:0 filter:{details_assignee_n:{eq:"gh.hypha"}})@cascade(fields:["dao"]){
+    system_nodeLabel_s
+    details_assignee_n
+    system_description_s
+    details_title_s
+    details_usdSalaryValuePerPhase_a
+    details_state_s
+    details_description_s
+    dao(filter:{details_daoName_n:{eq:"testdao"}}){
+      details_daoName_n
+    }
+  }
+}
+
