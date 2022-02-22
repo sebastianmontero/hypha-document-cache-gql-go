@@ -1,52 +1,59 @@
-contract-name: tlaclocmant2
+contract-name: mtdhoxhyphaa
 doc-table-name: documents
 edge-table-name: edges
-#firehose-endpoint: localhost:9000
 firehose-endpoint: fh.tekit.io:443
 eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
 dgraph-alpha-http-port: 8080
 prometheus-port: 2114
-start-block: 151824876
+start-block: 147046658
 heart-beat-frequency: 100
-elastic-endpoint: https://traceability.es.us-east4.gcp.elastic-cloud.com:9243/traceability-documents/_search #Used only to update the doccache config object
-elastic-api-key: QnpfOGVINEJlUDVxVEJhbGdvNXQ6UVZGN2NDbjNUV2FCQ2N2R1kyTmYtUQ== #Used only to update the doccache config object
-#dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
-# type-mappings:
-#   - type: vote.tally
-#     labels:
-#       pass:
-#         - vote_power
-#       fail:
-#         - vote_power
-# custom-interfaces:
-#   - name: Votable #New type so use name to use in GQL
-#     fields:
-#       - content-group: ballot
-#         name: expiration
-#         type: time_point
-#         signature: true # used to identify votable types
-#       - content-group: details
-#         name: title
-#         type: string
-#       - content-group: details
-#         name: description
-#         type: string
-#       - name: vote
-#         type: vote
-#       - name: votetally
-#         type: vote.tally
-#     types:
-#       - payout
-#       - assignment
-#       - assignbadge
-#       - edit
-#       - suspend
-
-# logical-ids:
-#   - type: member #Existing type use name from orginal chain doc
-#     ids:
-#       - content-group: details
-#         name: member
-#         type: name
+elastic-endpoint: https://hypha.es.eu-west-1.aws.found.io:9243/dho-testnet-documents/_search
+elastic-api-key: ZE0ybXQzNEJKUWhHaGFXUEtzblM6WWJxUHJ6NmZUVWVWVjVBMzFGN3JzQQ==
+type-mappings:
+  - type: vote.tally
+    labels:
+      fail:
+        - vote_power
+      pass:
+        - vote_power
+custom-interfaces:
+  - name: Votable
+    fields:
+      - name: expiration
+        type: time_point
+        content-group: ballot
+        signature: true
+      - name: title
+        type: string
+        content-group: details
+      - name: description
+        type: string
+        content-group: details
+      - name: vote
+        type: vote
+      - name: votetally
+        type: vote.tally
+    types:
+      - payout
+      - assignment
+      - assignbadge
+      - edit
+      - suspend
+logical-ids:
+  - type: member
+    ids:
+      - content-group: details
+        name: member
+        type: name
+  - type: dao
+    ids:
+      - content-group: details
+        name: dao_name
+        type: name
+  - type: dho
+    ids:
+      - content-group: details
+        name: root_node
+        type: name

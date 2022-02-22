@@ -378,7 +378,7 @@ func TestOpCycle(t *testing.T) {
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
 		CreatedDate: "2020-11-12T18:27:47.000",
-		UpdatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T20:27:47.000",
 		Creator:     "dao.hypha",
 		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
@@ -483,6 +483,7 @@ func TestOpCycle(t *testing.T) {
 			Index: "exact",
 		},
 	)
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T20:27:47.000Z")
 	expectedDHOInstance.SetValue("details_periodCount_i", int64(50))
 	expectedDHOInstance.SetValue("details_timeShareX100_i", nil)
 	expectedDHOInstance.SetValue("details_strToInt_s", nil)
@@ -514,7 +515,7 @@ func TestOpCycle(t *testing.T) {
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
 		CreatedDate: "2020-11-12T18:27:47.000",
-		UpdatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T21:27:47.000",
 		Creator:     "dao.hypha",
 		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
@@ -595,6 +596,7 @@ func TestOpCycle(t *testing.T) {
 		},
 	}
 
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T21:27:47.000Z")
 	expectedDHOInstance.SetValue("system_endPeriod_c", period3Hash)
 
 	cursor = "cursor6"
@@ -619,7 +621,7 @@ func TestOpCycle(t *testing.T) {
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
 		CreatedDate: "2020-11-12T18:27:47.000",
-		UpdatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T22:28:47.000",
 		Creator:     "dao.hypha",
 		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
@@ -693,6 +695,7 @@ func TestOpCycle(t *testing.T) {
 		},
 	}
 
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T22:28:47.000Z")
 	expectedDHOInstance.SetValue("details_startPeriod_c", nil)
 
 	cursor = "cursorB"
