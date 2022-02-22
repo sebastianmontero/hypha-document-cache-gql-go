@@ -28,7 +28,7 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		Name:    "creator",
 		Type:    "String",
 		NonNull: true,
-		Index:   "exact",
+		Index:   "regexp",
 	},
 	"createdDate": {
 		Name:    "createdDate",
@@ -54,7 +54,7 @@ const DocumentFields = `
 		docId: String! @id @search(by: [exact])
 		docId_i: Int64! @search(by: [int64])
 		type: String! @search(by: [exact])
-		creator: String! @search(by: [exact])
+		creator: String! @search(by: [regexp])
 		createdDate: DateTime! @search(by: [hour])
 		updatedDate: DateTime! @search(by: [hour])
 		contract: String! @search(by: [exact])

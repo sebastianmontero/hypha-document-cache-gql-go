@@ -29,7 +29,7 @@ var userType = gql.NewSimplifiedType(
 		"details_account_n": {
 			Name:  "details_account_n",
 			Type:  "String",
-			Index: "exact",
+			Index: "regexp",
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -41,7 +41,7 @@ var memberType = gql.NewSimplifiedType(
 		"details_account_n": {
 			Name:  "details_account_n",
 			Type:  "String",
-			Index: "exact",
+			Index: "regexp",
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -219,7 +219,7 @@ func TestOpCycle(t *testing.T) {
 			"details_rootNode_n": {
 				Name:  "details_rootNode_n",
 				Type:  "String",
-				Index: "exact",
+				Index: "regexp",
 			},
 			"details_hvoiceSalaryPerPhase_a": {
 				Name:  "details_hvoiceSalaryPerPhase_a",
@@ -1117,7 +1117,7 @@ func TestLogicalIds(t *testing.T) {
 			"details_rootNode_n": {
 				Name:    "details_rootNode_n",
 				Type:    "String",
-				Index:   "exact",
+				Index:   "regexp",
 				IsID:    true,
 				NonNull: true,
 			},
@@ -1277,12 +1277,12 @@ func TestLogicalIds(t *testing.T) {
 			"details_rootNode_n": {
 				Name:  "details_rootNode_n",
 				Type:  "String",
-				Index: "exact",
+				Index: "regexp",
 			},
 			"details_member_n": {
 				Name:    "details_member_n",
 				Type:    "String",
-				Index:   "exact",
+				Index:   "regexp",
 				IsID:    true,
 				NonNull: true,
 			},
@@ -1454,7 +1454,7 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 			"details_account_n": {
 				Name:  "details_account_n",
 				Type:  gql.GQLType_String,
-				Index: "exact",
+				Index: "regexp",
 			},
 		},
 		[]string{
@@ -1951,7 +1951,7 @@ func TestCustomInterfaces(t *testing.T) {
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
 			WithSubscription: true,
@@ -2549,7 +2549,7 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
 			WithSubscription: true,
@@ -2793,7 +2793,7 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
 			WithSubscription: true,
@@ -2986,7 +2986,7 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
 			WithSubscription: true,

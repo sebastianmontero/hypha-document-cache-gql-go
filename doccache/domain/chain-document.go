@@ -35,7 +35,7 @@ var ContentTypeIndexMap = map[string]string{
 	ContentType_Asset:       "term",
 	ContentType_Checksum256: "exact",
 	ContentType_Int64:       "int64",
-	ContentType_Name:        "exact",
+	ContentType_Name:        "regexp",
 	ContentType_Time:        "hour",
 	ContentType_String:      "regexp",
 }

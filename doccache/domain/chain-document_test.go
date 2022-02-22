@@ -100,7 +100,7 @@ func TestToParsedDoc(t *testing.T) {
 				"details_rootNode_n": {
 					Name:  "details_rootNode_n",
 					Type:  "String",
-					Index: "exact",
+					Index: "regexp",
 				},
 				"details_role_c": {
 					Name:  "details_role_c",
