@@ -54,7 +54,7 @@ func TestToParsedDoc(t *testing.T) {
 					Label: "time_share_x100",
 					Value: []interface{}{
 						"int64",
-						"60",
+						"-1.0321e+06",
 					},
 				},
 			},
@@ -141,7 +141,7 @@ func TestToParsedDoc(t *testing.T) {
 			"details_rootNode_n":             "dao.hypha",
 			"details_role_c":                 "b7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
-			"details_timeShareX100_i":        int64(60),
+			"details_timeShareX100_i":        int64(-1032100),
 			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 			"system_period_c":                "f7cf9e60a6c33e79b32c2eeb4575857f3f2c4166e737c6b3863da62a2cfcf1cf",
 		},
@@ -497,7 +497,7 @@ func TestToParsedDocShouldFailForInvalidInt(t *testing.T) {
 		},
 	}
 	_, err := chainDoc1.ToParsedDoc(make(map[string][]string))
-	assert.ErrorContains(t, err, "failed to parse content value to int64")
+	assert.ErrorContains(t, err, "failed to parse content value to float64 before casting to int64")
 }
 
 func TestToParsedDocShouldFailForNoType(t *testing.T) {
@@ -549,6 +549,23 @@ func TestChainDocUnmarshall(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Unmarshalling failed: %v", err)
 	}
+}
+
+func TestChainDocUnmarshallAndParse(t *testing.T) {
+	chainDocJSON := `{"certificates":[],"content_groups":[[{"label":"content_group_label","value":["string","details"]},{"label":"title","value":["string","dsadsa"]},{"label":"description","value":["string","dsadsa"]},{"label":"url","value":["string",""]},{"label":"annual_usd_salary","value":["asset","90000.00 USD"]},{"label":"fulltime_capacity_x100","value":["int64",1032100]},{"label":"min_deferred_x100","value":["int64",38]},{"label":"state","value":["string","proposed"]}],[{"label":"content_group_label","value":["string","system"]},{"label":"client_version","value":["string","un-versioned"]},{"label":"contract_version","value":["string","un-versioned"]},{"label":"node_label","value":["string","dsadsa"]},{"label":"description","value":["string","dsadsa"]},{"label":"type","value":["name","role"]},{"label":"comment_name","value":["name","............h"]}],[{"label":"content_group_label","value":["string","ballot"]},{"label":"expiration","value":["time_point","2022-02-24T18:29:25"]}],[{"label":"content_group_label","value":["string","ballot_options"]},{"label":"pass","value":["name","pass"]},{"label":"abstain","value":["name","abstain"]},{"label":"fail","value":["name","fail"]}]],"contract":"mtdhoxhyphaa","created_date":"2022-02-22T18:29:25.5","creator":"johnnyhypha1","hash":"c5d76231f3193edfa4ab23214a00384d523c363757bdf9634da3c92b6c3a948f","id":18446744073709000000}`
+	chainDoc := &domain.ChainDocument{}
+	err := json.Unmarshal([]byte(chainDocJSON), chainDoc)
+	if err != nil {
+		t.Fatalf("Unmarshalling failed: %v", err)
+	}
+	assert.Equal(t, chainDoc.GetDocId(), "18446744073709000000")
+	assert.Equal(t, chainDoc.ID, uint64(18446744073709000000))
+
+	doc, err := chainDoc.ToParsedDoc(make(map[string][]string))
+	assert.NilError(t, err)
+
+	assert.Equal(t, doc.Instance.GetValue("docId"), "18446744073709000000")
+
 }
 
 func assertParsedDoc(t *testing.T, actual, expected *domain.ParsedDoc) {
