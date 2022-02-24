@@ -134,11 +134,16 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 
 	fields := make(map[string]*gql.SimplifiedField)
 	checksumFields := make([]string, 0)
+	createdDate := FormatDateTime(m.CreatedDate)
+	updatedDate := createdDate
+	if m.UpdatedDate != "" {
+		updatedDate = FormatDateTime(m.UpdatedDate)
+	}
 	values := map[string]interface{}{
 		"docId":       m.GetDocId(),
 		"creator":     m.Creator,
-		"createdDate": FormatDateTime(m.CreatedDate),
-		"updatedDate": FormatDateTime(m.UpdatedDate),
+		"createdDate": createdDate,
+		"updatedDate": updatedDate,
 		"contract":    m.Contract,
 	}
 
