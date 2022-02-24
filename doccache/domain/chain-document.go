@@ -101,11 +101,12 @@ func (m *ChainContent) GetGQLValue() (interface{}, error) {
 	if gqlType == gql.GQLType_Time {
 		return FormatDateTime(m.GetValue()), nil
 	} else if gqlType == gql.GQLType_Int64 {
-		intValue, err := strconv.ParseInt(m.GetValue(), 0, 64)
+		//Parse to float first to handle scientific notation
+		floatValue, err := strconv.ParseFloat(m.GetValue(), 64)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse content value to int64, value: %v for label: %v, error: %v", m.GetValue(), m.Label, err)
+			return nil, fmt.Errorf("failed to parse content value to float64 before casting to int64, value: %v for label: %v, error: %v", m.GetValue(), m.Label, err)
 		}
-		return intValue, nil
+		return int64(floatValue), nil
 	} else {
 		return m.GetValue(), nil
 	}
