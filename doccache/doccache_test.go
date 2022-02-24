@@ -253,7 +253,6 @@ func TestOpCycle(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"updatedDate":                    "2020-11-12T19:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -827,7 +826,6 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 		),
 		map[string]interface{}{
 			"docId":            chainDoc1Id,
-			"docId_i":          chainDoc1IdI,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"updatedDate":      "2020-11-12T19:27:47.000Z",
 			"creator":          "dao.hypha",
@@ -922,7 +920,6 @@ func TestMissingCoreEdge(t *testing.T) {
 		expectedType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -997,7 +994,6 @@ func TestMissingCoreEdge(t *testing.T) {
 		expectedType,
 		map[string]interface{}{
 			"docId":                 assignment2Id,
-			"docId_i":               assignment2IdI,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -1133,7 +1129,6 @@ func TestLogicalIds(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"updatedDate":                    "2020-11-12T19:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -1204,7 +1199,6 @@ func TestLogicalIds(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"updatedDate":                    "2020-11-12T19:27:47.000Z",
 			"creator":                        "dao.hypha",
@@ -1293,7 +1287,6 @@ func TestLogicalIds(t *testing.T) {
 		expectedMemberType,
 		map[string]interface{}{
 			"docId":              memberId,
-			"docId_i":            memberIdI,
 			"createdDate":        "2020-11-12T19:27:47.000Z",
 			"updatedDate":        "2020-11-12T19:27:47.000Z",
 			"creator":            "bob",
@@ -1634,7 +1627,6 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -1750,7 +1742,6 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment2Id,
-			"docId_i":               assignment2IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -1834,7 +1825,6 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -1963,7 +1953,6 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment3Id,
-			"docId_i":               assignment3IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -2048,7 +2037,6 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -2187,7 +2175,6 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 		expectedAssignBadgeType,
 		map[string]interface{}{
 			"docId":                 assignBadge1Id,
-			"docId_i":               assignBadge1IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -2324,7 +2311,6 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 		expectedPayoutType,
 		map[string]interface{}{
 			"docId":                 payout1Id,
-			"docId_i":               payout1IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -2415,7 +2401,6 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -2561,7 +2546,6 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 		expectedAssignbadgeType,
 		map[string]interface{}{
 			"docId":                 assignbadge1Id,
-			"docId_i":               assignbadge1IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -2653,7 +2637,6 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -2805,7 +2788,6 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
 			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
@@ -2896,7 +2878,6 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
 			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
@@ -2998,7 +2979,6 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":             assignment1Id,
-			"docId_i":           assignment1IdI,
 			"createdDate":       "2020-11-12T18:27:48.000Z",
 			"updatedDate":       "2020-11-12T19:27:48.000Z",
 			"creator":           "dao.hypha",
@@ -3100,7 +3080,6 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                   assignment1Id,
-			"docId_i":                 assignment1IdI,
 			"createdDate":             "2020-11-12T19:27:47.000Z",
 			"updatedDate":             "2020-11-12T19:27:47.000Z",
 			"creator":                 "dao.hypha",
@@ -3180,7 +3159,6 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -3274,7 +3252,6 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                   assignment2Id,
-			"docId_i":                 assignment2IdI,
 			"createdDate":             "2020-11-12T18:27:47.000Z",
 			"updatedDate":             "2020-11-12T19:27:47.000Z",
 			"creator":                 "dao.hypha",
@@ -3462,7 +3439,6 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -3637,7 +3613,6 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
 			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
@@ -3719,7 +3694,6 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
 			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
@@ -3877,7 +3851,6 @@ func getUserInstance(docIdI uint64, account string) *gql.SimplifiedInstance {
 		userType,
 		map[string]interface{}{
 			"docId":             strconv.FormatUint(docIdI, 10),
-			"docId_i":           docIdI,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
 			"updatedDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
@@ -3893,7 +3866,6 @@ func getMemberInstance(docIdI uint64, account string) *gql.SimplifiedInstance {
 		memberType,
 		map[string]interface{}{
 			"docId":             strconv.FormatUint(docIdI, 10),
-			"docId_i":           docIdI,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
 			"updatedDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
@@ -3953,7 +3925,6 @@ func getPeriodInstance(docId uint64, number int64) *gql.SimplifiedInstance {
 		periodType,
 		map[string]interface{}{
 			"docId":            strconv.FormatUint(docId, 10),
-			"docId_i":          docId,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"updatedDate":      "2020-11-12T19:27:47.000Z",
 			"creator":          "dao.hypha",

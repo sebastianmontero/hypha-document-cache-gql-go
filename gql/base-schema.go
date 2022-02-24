@@ -12,12 +12,6 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		NonNull: true,
 		Index:   "exact",
 	},
-	"docId_i": {
-		Name:    "docId_i",
-		Type:    GQLType_Int64,
-		NonNull: true,
-		Index:   "int64",
-	},
 	"type": {
 		Name:    "type",
 		Type:    "String",
@@ -52,7 +46,6 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 
 const DocumentFields = `
 		docId: String! @id @search(by: [exact])
-		docId_i: Int64! @search(by: [int64])
 		type: String! @search(by: [exact])
 		creator: String! @search(by: [regexp])
 		createdDate: DateTime! @search(by: [hour])

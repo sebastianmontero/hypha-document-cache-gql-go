@@ -136,7 +136,6 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 	checksumFields := make([]string, 0)
 	values := map[string]interface{}{
 		"docId":       m.GetDocId(),
-		"docId_i":     m.ID,
 		"creator":     m.Creator,
 		"createdDate": FormatDateTime(m.CreatedDate),
 		"updatedDate": FormatDateTime(m.UpdatedDate),

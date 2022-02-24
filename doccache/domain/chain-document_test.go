@@ -132,7 +132,6 @@ func TestToParsedDoc(t *testing.T) {
 		),
 		map[string]interface{}{
 			"docId":                          "0",
-			"docId_i":                        0,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
 			"updatedDate":                    "2020-11-12T20:37:47.000Z",
 			"creator":                        "dao.hypha",
@@ -288,7 +287,6 @@ func TestToParsedDocDeduceType(t *testing.T) {
 		),
 		map[string]interface{}{
 			"docId":            "0",
-			"docId_i":          0,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"updatedDate":      "2020-11-12T20:37:47.000Z",
 			"creator":          "dao.hypha",
@@ -415,7 +413,6 @@ func TestToParsedDocDotNamedType(t *testing.T) {
 		),
 		map[string]interface{}{
 			"docId":            "0",
-			"docId_i":          0,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
 			"updatedDate":      "2020-11-12T20:37:47.000Z",
 			"creator":          "dao.hypha",

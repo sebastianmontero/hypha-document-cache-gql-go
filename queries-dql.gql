@@ -168,7 +168,6 @@ query q($dao: string, $member: string, $first: int, $offset: int) {
     creator: Document.creator
     createdDate: Document.createdDate
     docId: Document.docId
-    docId_i: Document.docId_i
     system_nodeLabel_s: Vote.system_nodeLabel_s
     vote_vote_s: Vote.vote_vote_s
     vote_voter_n: Vote.vote_voter_n
@@ -219,7 +218,6 @@ query q($dao: string, $member: string, $first: int, $offset: int) {
     creator: Document.creator
     createdDate: Document.createdDate
     docId: Document.docId
-    docId_i: Document.docId_i
     system_nodeLabel_s: Vote.system_nodeLabel_s
     vote_vote_s: Vote.vote_vote_s
     vote_voter_n: Vote.vote_voter_n
@@ -261,7 +259,7 @@ type Query {
       creator: Document.creator
       createdDate: Document.createdDate
       docId: Document.docId
-      docId_i: Document.docId_i
+
       system_nodeLabel_s: Vote.system_nodeLabel_s
       vote_vote_s: Vote.vote_vote_s
       vote_voter_n: Vote.vote_voter_n

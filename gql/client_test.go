@@ -2,7 +2,6 @@ package gql_test
 
 import (
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
@@ -35,12 +34,10 @@ func TestAdd(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -81,12 +78,10 @@ func TestAdd(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	personId := "2"
-	personIdI, _ := strconv.ParseUint(personId, 10, 64)
 	personInstance := gql.NewSimplifiedInstance(
 		personType,
 		map[string]interface{}{
 			"docId":       personId,
-			"docId_i":     personIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -145,12 +140,10 @@ func TestAddMultipleIDs(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"name":        "assign1",
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
@@ -178,9 +171,7 @@ func TestAddMultipleIDs(t *testing.T) {
 	// Verify that each id field is independent, not composite id
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 	assignmentId = "2"
-	assignmentIdI, _ = strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance.SetValue("docId", assignmentId)
-	assignmentInstance.SetValue("docId_i", assignmentIdI)
 	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.ErrorContains(t, err, "id assign1 already exists for field name inside type Assignment")
 
@@ -220,12 +211,10 @@ func TestUpdateFieldToBeID(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"name":        "assign1",
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
@@ -253,9 +242,7 @@ func TestUpdateFieldToBeID(t *testing.T) {
 	// Verify that each id field is independent, not composite id
 	assertInstance(t, actualAssignmentInstance, assignmentInstance)
 	assignmentId = "2"
-	assignmentIdI, _ = strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance.SetValue("docId", assignmentId)
-	assignmentInstance.SetValue("docId_i", assignmentIdI)
 	assignmentInstance.SetValue("name", "assign2")
 	err = client.Mutate(assignmentInstance.AddMutation(false))
 	assert.NilError(t, err)
@@ -322,12 +309,10 @@ func TestUpdate(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -358,7 +343,6 @@ func TestUpdate(t *testing.T) {
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -402,7 +386,6 @@ func TestUpdate(t *testing.T) {
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -468,12 +451,10 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignment1Id := "1"
-	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Instance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignment1Id,
-			"docId_i":     assignment1IdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -484,10 +465,8 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 		},
 	)
 	personId := "2"
-	personIdI, _ := strconv.ParseUint(personId, 10, 64)
 	allPersonValues := map[string]interface{}{
 		"docId":       personId,
-		"docId_i":     personIdI,
 		"createdDate": "2020-11-12T18:27:47.000Z",
 		"updatedDate": "2020-11-12T19:27:47.000Z",
 		"creator":     "dao.hypha",
@@ -550,12 +529,10 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 	assertInstance(t, actualPersonInstance, personInstance)
 
 	assignment2Id := "3"
-	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	assignment2Instance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignment2Id,
-			"docId_i":     assignment2IdI,
 			"createdDate": "2020-11-15T18:27:47.000Z",
 			"updatedDate": "2020-11-15T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -662,12 +639,10 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 	)
 
 	assignment1Id := "1"
-	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
 	assignment1Instance := gql.NewSimplifiedInstance(
 		assignmentType1,
 		map[string]interface{}{
 			"docId":       assignment1Id,
-			"docId_i":     assignment1IdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -679,12 +654,10 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 	)
 
 	assignment2Id := "2"
-	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
 	assignment2Instance := gql.NewSimplifiedInstance(
 		assignmentType2,
 		map[string]interface{}{
 			"docId":       assignment2Id,
-			"docId_i":     assignment2IdI,
 			"createdDate": "2020-10-12T18:27:47.000Z",
 			"updatedDate": "2020-10-12T19:27:47.000Z",
 			"creator":     "dao.hypha1",
@@ -695,10 +668,8 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 	)
 
 	personId := "3"
-	personIdI, _ := strconv.ParseUint(personId, 10, 64)
 	allPersonValues := map[string]interface{}{
 		"docId":       personId,
-		"docId_i":     personIdI,
 		"createdDate": "2020-11-12T18:27:47.000Z",
 		"updatedDate": "2020-11-12T19:27:47.000Z",
 		"creator":     "dao.hypha",
@@ -874,12 +845,10 @@ func TestDelete(t *testing.T) {
 		gql.DocumentSimplifiedInterface,
 	)
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
@@ -938,12 +907,10 @@ func TestMultipleMutations(t *testing.T) {
 	)
 
 	assignmentId := "1"
-	assignmentIdI, _ := strconv.ParseUint(assignmentId, 10, 64)
 	assignmentInstance := gql.NewSimplifiedInstance(
 		assignmentType,
 		map[string]interface{}{
 			"docId":       assignmentId,
-			"docId_i":     assignmentIdI,
 			"createdDate": "2020-11-12T18:27:47.000Z",
 			"updatedDate": "2020-11-12T19:27:47.000Z",
 			"creator":     "dao.hypha",
