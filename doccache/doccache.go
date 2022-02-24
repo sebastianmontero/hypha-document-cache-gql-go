@@ -12,7 +12,8 @@ import (
 
 const CursorIdName string = "id"
 const CursorIdValue string = "c1"
-const DocumentIdName string = "hash"
+const DoccacheConfigIdValue string = "dc1"
+const DocumentIdName string = "docId"
 
 var log *slog.Log
 
@@ -38,6 +39,10 @@ func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, config *config
 	}
 
 	err := m.PrepareSchema()
+	if err != nil {
+		return nil, err
+	}
+	err = m.updateDoccacheConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +122,30 @@ func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 	return cursor, nil
 }
 
+func (m *Doccache) updateDoccacheConfig() error {
+
+	_, err := m.updateSchemaType(gql.DoccacheConfigSimplifiedType)
+	if err != nil {
+		return fmt.Errorf("failed to update schema with the doccache config type, type: %v, error : %v", gql.DoccacheConfigSimplifiedType, err)
+	}
+
+	doccacheConfig := gql.NewSimplifiedInstance(
+		gql.DoccacheConfigSimplifiedType,
+		map[string]interface{}{
+			"id":             DoccacheConfigIdValue,
+			"contract":       m.config.ContractName,
+			"eosEndpoint":    m.config.EosEndpoint,
+			"documentsTable": m.config.DocTableName,
+			"edgesTable":     m.config.EdgeTableName,
+		},
+	)
+	err = m.client.Mutate(doccacheConfig.AddMutation(true))
+	if err != nil {
+		return fmt.Errorf("failed to update doccache config, value: %v, error: %v", doccacheConfig, err)
+	}
+	return nil
+}
+
 func (m *Doccache) mutate(mutation *gql.Mutation, cursor string) error {
 	m.Cursor.SetValue("cursor", cursor)
 	cursorMutation := m.Cursor.AddMutation(true)
@@ -168,65 +197,73 @@ func (m *Doccache) GetCursorInstance(cursorId interface{}, simplifiedType *gql.S
 	return m.client.GetOne(CursorIdName, cursorId, simplifiedType, projection)
 }
 
-func (m *Doccache) GetDocumentBaseInstances(hashes []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
-	return m.client.GetBaseInstances(DocumentIdName, hashes, simplifiedType, projection)
+func (m *Doccache) GetDoccacheConfigInstance() (*gql.SimplifiedInstance, error) {
+	return m.client.GetOne("id", DoccacheConfigIdValue, gql.DoccacheConfigSimplifiedType, nil)
+}
+
+func (m *Doccache) GetDocumentBaseInstances(ids []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
+	return m.client.GetBaseInstances(DocumentIdName, ids, simplifiedType, projection)
+}
+
+func (m *Doccache) GetDocumentBaseInstancesByHash(hashes []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
+	return m.client.GetBaseInstances("hash", hashes, simplifiedType, projection)
 }
 
 //StoreDocument Creates a new document or updates its certificates
 func (m *Doccache) StoreDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
+		return fmt.Errorf("failed to store document with docId: %v, error building instance from chain doc: %v", chainDoc.ID, err)
 	}
 	instance := parsedDoc.Instance
 	newSimplifiedType := instance.SimplifiedType
 	currentSimplifiedType, err := m.Schema.GetSimplifiedType(newSimplifiedType.Name)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error getting simplified type from schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error getting simplified type from schema: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.AddCoreEdges(parsedDoc)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error adding core edges: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error adding core edges: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 
 	err = m.config.LogicalIds.ConfigureLogicalIds(newSimplifiedType.SimplifiedBaseType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, unable to configure logical ids, error: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, unable to configure logical ids, error: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.config.Interfaces.ApplyInterfaces(newSimplifiedType, currentSimplifiedType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, unable to apply interfaces, error: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, unable to apply interfaces, error: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 
 	updateOp, err := m.updateSchemaType(newSimplifiedType)
 	if err != nil {
-		return fmt.Errorf("failed to store document with hash: %v of type: %v, error updating schema: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to store document with docId: %v of type: %v, error updating schema: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	var oldInstance *gql.SimplifiedInstance
 	if updateOp != gql.SchemaUpdateOp_Created {
-		oldInstance, err = m.GetDocumentInstance(instance.GetValue("hash"), currentSimplifiedType, currentSimplifiedType.GetCoreFields())
+		oldInstance, err = m.GetDocumentInstance(instance.GetValue(DocumentIdName), currentSimplifiedType, currentSimplifiedType.GetCoreFields())
 		if err != nil {
-			return fmt.Errorf("failed to store document with hash: %v of type: %v, error fetching old instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to store document with docId: %v of type: %v, error fetching old instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	}
 
 	if oldInstance == nil {
-		log.Infof("Creating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		log.Infof("Creating document: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 		err = m.mutate(instance.AddMutation(false), cursor)
 		if err != nil {
-			return fmt.Errorf("failed to create document with hash: %v of type: %v, error inserting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to create document with docId: %v of type: %v, error inserting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	} else {
 		//TODO: handle certificates
-		log.Infof("Updating document: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+		log.Infof("Updating document: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 		mutation, err := instance.UpdateMutation(DocumentIdName, oldInstance)
 		fmt.Println("Update mutation: ", mutation)
 		if err != nil {
-			return fmt.Errorf("failed to update document with hash: %v of type: %v, error generating update mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to update document with docId: %v of type: %v, error generating update mutation: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 		err = m.mutate(mutation, cursor)
 		if err != nil {
-			return fmt.Errorf("failed to update document with hash: %v of type: %v, error updating instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+			return fmt.Errorf("failed to update document with docId: %v of type: %v, error updating instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 		}
 	}
 
@@ -243,7 +280,7 @@ func (m *Doccache) AddCoreEdges(parsedDoc *domain.ParsedDoc) error {
 	for _, checksumField := range parsedDoc.ChecksumFields {
 		checksums = append(checksums, newInstance.GetValue(checksumField))
 	}
-	instances, err := m.GetDocumentBaseInstances(checksums, gql.DocumentSimplifiedInterface.SimplifiedBaseType, nil)
+	instances, err := m.GetDocumentBaseInstancesByHash(checksums, gql.DocumentSimplifiedInterface.SimplifiedBaseType, nil)
 	if err != nil {
 		return fmt.Errorf("failed getting core edge documents, for document: %v of type: %v, error: %v", newInstance.GetValue("hash"), newInstance.GetValue("type"), err)
 	}
@@ -274,17 +311,17 @@ func GetEdgeValue(docId interface{}) map[string]interface{} {
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v, error building instance from chain doc: %v", chainDoc.Hash, err)
+		return fmt.Errorf("failed to delete document with docId: %v, error building instance from chain doc: %v", chainDoc.ID, err)
 	}
 	instance := parsedDoc.Instance
-	log.Infof("Deleting Node: %v of type: %v", chainDoc.Hash, instance.GetValue("type"))
+	log.Infof("Deleting Node: %v of type: %v", chainDoc.ID, instance.GetValue("type"))
 	mutation, err := instance.DeleteMutation(DocumentIdName)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error creating delete mutation: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error creating delete mutation: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	err = m.mutate(mutation, cursor)
 	if err != nil {
-		return fmt.Errorf("failed to delete document with hash: %v of type: %v, error deleting instance: %v", chainDoc.Hash, instance.GetValue("type"), err)
+		return fmt.Errorf("failed to delete document with docId: %v of type: %v, error deleting instance: %v", chainDoc.ID, instance.GetValue("type"), err)
 	}
 	return nil
 }
@@ -297,18 +334,18 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 		nil,
 	)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting instances, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed getting instances, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 
 	fromInstance, ok := instances[chainEdge.From]
 	if !ok {
-		log.Errorf(nil, "FROM node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		log.Errorf(nil, "FROM node of the relationship: [Edge: %v (%v), From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 		return nil
 	}
 
 	toInstance, ok := instances[chainEdge.To]
 	if !ok {
-		log.Errorf(nil, "TO node of the relationship: [Edge: %v, From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+		log.Errorf(nil, "TO node of the relationship: [Edge: %v (%v), From: %v, To: %v] does not exist, Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 		return nil
 	}
 
@@ -317,16 +354,16 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 
 	fromType, err := m.Schema.GetSimplifiedType(fromTypeName)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed getting type: %v, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, fromInstance.SimplifiedBaseType.Name, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed getting type: %v, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, fromInstance.SimplifiedBaseType.Name, err)
 	}
 	edgeType := toTypeName
-	currentEdgeField := fromType.GetField(chainEdge.Name)
+	currentEdgeField := fromType.GetField(chainEdge.DocEdgeName)
 	if currentEdgeField != nil && currentEdgeField.Type != toTypeName {
 		edgeType = gql.DocumentSimplifiedInterface.Name
 	}
-	err = m.updateSchemaEdge(fromTypeName, chainEdge.Name, edgeType)
+	err = m.updateSchemaEdge(fromTypeName, chainEdge.DocEdgeName, edgeType)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed updating schema, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 
 	var set, remove map[string]interface{}
@@ -337,12 +374,12 @@ func (m *Doccache) MutateEdge(chainEdge *domain.ChainEdge, deleteOp bool, cursor
 	}
 	mutation, err := fromType.UpdateMutation(DocumentIdName, chainEdge.From, set, remove)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed creating edge mutation, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed creating edge mutation, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
-	log.Infof("Mutating [Edge: %v, From: %v, To: %v] Delete Op: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp)
+	log.Infof("Mutating [Edge: %v (%v), From: %v, To: %v] Delete Op: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp)
 	err = m.mutate(mutation, cursor)
 	if err != nil {
-		return fmt.Errorf("failed mutating edge [Edge: %v, From: %v, To: %v], Delete Op: %v, failed storing edge, error: %v", chainEdge.Name, chainEdge.From, chainEdge.To, deleteOp, err)
+		return fmt.Errorf("failed mutating edge [Edge: %v (%v), From: %v, To: %v], Delete Op: %v, failed storing edge, error: %v", chainEdge.Name, chainEdge.DocEdgeName, chainEdge.From, chainEdge.To, deleteOp, err)
 	}
 	return nil
 }

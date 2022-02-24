@@ -56,7 +56,7 @@ const DocumentFields = `
 
 const BaseSchema = `
 
-	type Certificate {
+	type DocumentCertificate {
 		id: ID!
 		certifier: String! @search(by: [exact])
 		notes: String! @search(by: [term])
@@ -70,6 +70,14 @@ const BaseSchema = `
 	type Cursor {
 		id: String! @id @search(by: [exact])
 		cursor: String!
+	}
+
+	type DoccacheConfig {
+		id: String! @id @search(by: [exact])
+		contract: String!
+		eosEndpoint: String!
+		documentsTable: String!
+		edgesTable: String!
 	}
 
 	type TypeVersion {
@@ -99,6 +107,41 @@ var CursorSimplifiedType = &SimplifiedType{
 			},
 			"cursor": {
 				Name:    "cursor",
+				Type:    "String",
+				NonNull: true,
+			},
+		},
+	},
+}
+
+var DoccacheConfigSimplifiedType = &SimplifiedType{
+	SimplifiedBaseType: &SimplifiedBaseType{
+		Name: "DoccacheConfig",
+		Fields: map[string]*SimplifiedField{
+			"id": {
+				Name:    "id",
+				IsID:    true,
+				Type:    "String",
+				Index:   "exact",
+				NonNull: true,
+			},
+			"contract": {
+				Name:    "contract",
+				Type:    "String",
+				NonNull: true,
+			},
+			"eosEndpoint": {
+				Name:    "eosEndpoint",
+				Type:    "String",
+				NonNull: true,
+			},
+			"documentsTable": {
+				Name:    "documentsTable",
+				Type:    "String",
+				NonNull: true,
+			},
+			"edgesTable": {
+				Name:    "edgesTable",
 				Type:    "String",
 				NonNull: true,
 			},
