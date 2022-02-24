@@ -140,7 +140,6 @@ func TestOpCycle(t *testing.T) {
 	dhoDoc := &domain.ChainDocument{
 		ID:          dhoIdI,
 		CreatedDate: "2020-11-12T18:27:47.000",
-		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
 		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
@@ -254,7 +253,7 @@ func TestOpCycle(t *testing.T) {
 		map[string]interface{}{
 			"docId":                          dhoId,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
-			"updatedDate":                    "2020-11-12T19:27:47.000Z",
+			"updatedDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
 			"contract":                       "contract1",
 			"type":                           "Dho",
