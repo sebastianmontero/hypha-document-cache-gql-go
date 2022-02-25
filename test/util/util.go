@@ -14,7 +14,7 @@ func AssertSimplifiedInstance(t *testing.T, actual, expected *gql.SimplifiedInst
 	AssertSimplifiedType(t, actual.SimplifiedType, expected.SimplifiedType)
 	// fmt.Println("actual:", actual)
 	// fmt.Println("expected:", expected)
-	assert.Equal(t, len(actual.Values), len(expected.Values))
+	assert.Equal(t, len(actual.Values), len(expected.Values), "Different number of values expected: %v, actual: %v", expected.Values, actual.Values)
 
 	for name := range expected.Values {
 		field := expected.SimplifiedType.GetField(name)
@@ -62,6 +62,7 @@ func AssertContainsEdge(t *testing.T, edge map[string]interface{}, edges []inter
 func AssertSimplifiedBaseType(t *testing.T, actual, expected *gql.SimplifiedBaseType) {
 	assert.Equal(t, actual.Name, expected.Name)
 	assert.Equal(t, len(actual.Fields), len(expected.Fields), "Different number of fields actual: %v expected: %v", actual.Fields, expected.Fields)
+	assert.Equal(t, actual.WithSubscription, expected.WithSubscription)
 	for name, field := range expected.Fields {
 		AssertSimplifiedField(t, actual.Fields[name], field)
 	}
@@ -125,6 +126,12 @@ func AssertBaseType(t *testing.T, kind ast.DefinitionKind, expected *gql.Simplif
 	typeDef := schema.GetType(expected.Name)
 	assert.Assert(t, typeDef != nil, fmt.Sprintf("For type: %v", expected.Name))
 	assert.Equal(t, kind, typeDef.Kind)
+	directive := typeDef.Directives.ForName("withSubscription")
+	if expected.WithSubscription {
+		assert.Assert(t, directive != nil)
+	} else {
+		assert.Assert(t, directive == nil)
+	}
 	assert.Equal(t, len(expected.Fields), len(typeDef.Fields))
 	for _, field := range expected.Fields {
 		fieldDef := typeDef.Fields.ForName(field.Name)

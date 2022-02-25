@@ -25,6 +25,7 @@ func TestUpdateSchema(t *testing.T) {
 	currentSchema, err := admin.GetCurrentSchema()
 	assert.NilError(t, err)
 	// fmt.Println("Schema: ", currentSchema)
+	// fmt.Println(gql.DefinitionToString(currentSchema.GetType("Document"), 0))
 	// fmt.Println(gql.DefinitionToString(currentSchema.GetType("Role"), 0))
 	assert.Assert(t, currentSchema.GetType("Role") != nil)
 
@@ -660,6 +661,24 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 	assert.ErrorContains(t, err, "can't make scalar field: name of type: String, scalar of type: DateTime")
 
 }
+
+// func TestInterfaceExtendsInterfaceSchema(t *testing.T) {
+// 	// schemaDef := "type Person { name: String }"
+// 	schemaDef :=
+// 		`
+// 			interface Role implements Document { ` +
+// 			gql.DocumentFields + `
+// 				name: String
+// 			}
+// 		`
+// 	schema, err := gql.NewSchema(schemaDef, true)
+// 	assert.NilError(t, err)
+// 	// fmt.Println("D Schema: ", schema.String())
+// 	err = admin.UpdateSchema(schema)
+// 	assert.NilError(t, err)
+// 	_, err = admin.GetCurrentSchema()
+// 	assert.NilError(t, err)
+// }
 
 // func TestInterfaceWithMoreGenericTypeThanChild(t *testing.T) {
 // 	// schemaDef := "type Person { name: String }"

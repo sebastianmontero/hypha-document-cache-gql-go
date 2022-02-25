@@ -29,7 +29,7 @@ var userType = gql.NewSimplifiedType(
 		"details_account_n": {
 			Name:  "details_account_n",
 			Type:  "String",
-			Index: "exact",
+			Index: "regexp",
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -41,7 +41,7 @@ var memberType = gql.NewSimplifiedType(
 		"details_account_n": {
 			Name:  "details_account_n",
 			Type:  "String",
-			Index: "exact",
+			Index: "regexp",
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -111,6 +111,11 @@ func TestReloadSchema(t *testing.T) {
 	assert.Equal(t, cache2.Cursor.GetValue("id").(string), doccache.CursorIdValue)
 }
 
+func TestDoccacheConfigIsProperlyConfiguredForNoElasticEndpoint(t *testing.T) {
+	setUp("./config-no-elastic-endpoint.yml")
+	assertDoccacheConfig(t, cache, cfg)
+}
+
 func TestOpCycle(t *testing.T) {
 	setUp("./config-no-special-config.yml")
 	assertDoccacheConfig(t, cache, cfg)
@@ -118,10 +123,10 @@ func TestOpCycle(t *testing.T) {
 
 	t.Logf("Storing period 1 document")
 	period1Id := "21"
-	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
 	period1Hash := "h4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	periodDoc := getPeriodDoc(period1IdI, period1Hash, 1)
-	expectedPeriodInstance := getPeriodInstance(period1IdI, period1Hash, 1)
+	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
+	periodDoc := getPeriodDoc(period1IdI, 1)
+	expectedPeriodInstance := getPeriodInstance(period1IdI, 1)
 
 	cursor := "cursor0"
 	err := cache.StoreDocument(periodDoc, cursor)
@@ -132,12 +137,11 @@ func TestOpCycle(t *testing.T) {
 	t.Logf("Storing dho document")
 	dhoId := "2"
 	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
-	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -214,7 +218,7 @@ func TestOpCycle(t *testing.T) {
 			"details_rootNode_n": {
 				Name:  "details_rootNode_n",
 				Type:  "String",
-				Index: "exact",
+				Index: "regexp",
 			},
 			"details_hvoiceSalaryPerPhase_a": {
 				Name:  "details_hvoiceSalaryPerPhase_a",
@@ -236,10 +240,6 @@ func TestOpCycle(t *testing.T) {
 				Type:  "String",
 				Index: "exact",
 			},
-			"details_startPeriod_c_edge": {
-				Name: "details_startPeriod_c_edge",
-				Type: "Period",
-			},
 			"system_originalApprovedDate_t": {
 				Name:  "system_originalApprovedDate_t",
 				Type:  gql.GQLType_Time,
@@ -252,17 +252,16 @@ func TestOpCycle(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
-			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"updatedDate":                    "2020-11-12T18:27:47.000Z",
 			"creator":                        "dao.hypha",
+			"contract":                       "contract1",
 			"type":                           "Dho",
 			"details_rootNode_n":             "dao.hypha",
 			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
 			"details_timeShareX100_i":        int64(60),
 			"details_strToInt_s":             "60",
 			"details_startPeriod_c":          period1Hash,
-			"details_startPeriod_c_edge":     doccache.GetEdgeValue(period1Id),
 			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
 		},
 	)
@@ -275,9 +274,8 @@ func TestOpCycle(t *testing.T) {
 	t.Logf("Storing member document")
 	member1Id := "31"
 	member1IdI, _ := strconv.ParseUint(member1Id, 10, 64)
-	member1Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	memberDoc := getMemberDoc(member1IdI, member1Hash, "member1")
-	expectedMemberInstance := getMemberInstance(member1IdI, member1Hash, "member1")
+	memberDoc := getMemberDoc(member1IdI, "member1")
+	expectedMemberInstance := getMemberInstance(member1IdI, "member1")
 	cursor = "cursor2_1"
 
 	err = cache.StoreDocument(memberDoc, cursor)
@@ -288,9 +286,8 @@ func TestOpCycle(t *testing.T) {
 	t.Logf("Storing another member document")
 	member2Id := "32"
 	member2IdI, _ := strconv.ParseUint(member2Id, 10, 64)
-	member2Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	memberDoc = getMemberDoc(member2IdI, member2Hash, "member2")
-	expectedMemberInstance = getMemberInstance(member2IdI, member2Hash, "member2")
+	memberDoc = getMemberDoc(member2IdI, "member2")
+	expectedMemberInstance = getMemberInstance(member2IdI, "member2")
 	cursor = "cursor2_2"
 
 	err = cache.StoreDocument(memberDoc, cursor)
@@ -301,9 +298,8 @@ func TestOpCycle(t *testing.T) {
 	t.Logf("Storing user document")
 	user1Id := "41"
 	user1IdI, _ := strconv.ParseUint(user1Id, 10, 64)
-	user1Hash := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	userDoc := getUserDoc(user1IdI, user1Hash, "user1")
-	expectedUserInstance := getUserInstance(user1IdI, user1Hash, "user1")
+	userDoc := getUserDoc(user1IdI, "user1")
+	expectedUserInstance := getUserInstance(user1IdI, "user1")
 	cursor = "cursor3"
 
 	err = cache.StoreDocument(userDoc, cursor)
@@ -313,11 +309,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Adding member edge1")
 	cursor = "cursor4_1"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   member1Id,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, member1Id), false, cursor)
 	assert.NilError(t, err)
 
 	expectedDhoType.SetField("member", &gql.SimplifiedField{
@@ -335,11 +327,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Adding member edge2")
 	cursor = "cursor4_2"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   member2Id,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, member2Id), false, cursor)
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
@@ -352,11 +340,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Adding user edge1, should cause edge type to change to doc")
 	cursor = "cursor4_2"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   user1Id,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, user1Id), false, cursor)
 	assert.NilError(t, err)
 
 	expectedDhoType.SetField("member", &gql.SimplifiedField{
@@ -379,8 +363,8 @@ func TestOpCycle(t *testing.T) {
 	period2Id := "22"
 	period2IdI, _ := strconv.ParseUint(period2Id, 10, 64)
 	period2Hash := "i4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	periodDoc = getPeriodDoc(period2IdI, period2Hash, 2)
-	expectedPeriodInstance = getPeriodInstance(period2IdI, period2Hash, 2)
+	periodDoc = getPeriodDoc(period2IdI, 2)
+	expectedPeriodInstance = getPeriodInstance(period2IdI, 2)
 
 	cursor = "cursorA"
 	err = cache.StoreDocument(periodDoc, cursor)
@@ -391,9 +375,10 @@ func TestOpCycle(t *testing.T) {
 	t.Log("Update DHO document: Update values, add coreedge, remove core field")
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T20:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -496,13 +481,7 @@ func TestOpCycle(t *testing.T) {
 			Index: "exact",
 		},
 	)
-	expectedDhoType.SetField(
-		"system_endPeriod_c_edge",
-		&gql.SimplifiedField{
-			Name: "system_endPeriod_c_edge",
-			Type: "Period",
-		},
-	)
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T20:27:47.000Z")
 	expectedDHOInstance.SetValue("details_periodCount_i", int64(50))
 	expectedDHOInstance.SetValue("details_timeShareX100_i", nil)
 	expectedDHOInstance.SetValue("details_strToInt_s", nil)
@@ -510,7 +489,6 @@ func TestOpCycle(t *testing.T) {
 	expectedDHOInstance.SetValue("system_originalApprovedDate_t", "2021-05-12T05:09:36.5Z")
 	expectedDHOInstance.SetValue("details_hvoiceSalaryPerPhase_a", "4233.04 HVOICE")
 	expectedDHOInstance.SetValue("system_endPeriod_c", period2Hash)
-	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period2Id))
 
 	cursor = "cursor6"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -522,8 +500,8 @@ func TestOpCycle(t *testing.T) {
 	period3Id := "23"
 	period3IdI, _ := strconv.ParseUint(period3Id, 10, 64)
 	period3Hash := "i3fc74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
-	periodDoc = getPeriodDoc(period3IdI, period3Hash, 3)
-	expectedPeriodInstance = getPeriodInstance(period3IdI, period3Hash, 3)
+	periodDoc = getPeriodDoc(period3IdI, 3)
+	expectedPeriodInstance = getPeriodInstance(period3IdI, 3)
 
 	cursor = "cursor7_1"
 	err = cache.StoreDocument(periodDoc, cursor)
@@ -534,9 +512,10 @@ func TestOpCycle(t *testing.T) {
 	t.Log("Update 2 dho, update core edge")
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T21:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -615,8 +594,8 @@ func TestOpCycle(t *testing.T) {
 		},
 	}
 
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T21:27:47.000Z")
 	expectedDHOInstance.SetValue("system_endPeriod_c", period3Hash)
-	expectedDHOInstance.SetValue("system_endPeriod_c_edge", doccache.GetEdgeValue(period3Id))
 
 	cursor = "cursor6"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -626,11 +605,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Deleting member 1 edge")
 	cursor = "cursor7"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   member1Id,
-	}, true, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, member1Id), true, cursor)
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
@@ -643,9 +618,10 @@ func TestOpCycle(t *testing.T) {
 	t.Log("Update 3 DHO document: remove core edge")
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T22:28:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -717,8 +693,8 @@ func TestOpCycle(t *testing.T) {
 		},
 	}
 
+	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T22:28:47.000Z")
 	expectedDHOInstance.SetValue("details_startPeriod_c", nil)
-	expectedDHOInstance.SetValue("details_startPeriod_c_edge", nil)
 
 	cursor = "cursorB"
 	err = cache.StoreDocument(dhoDoc, cursor)
@@ -728,11 +704,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Deleting user 1 edge")
 	cursor = "cursor7_1"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   user1Id,
-	}, true, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, user1Id), true, cursor)
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{
@@ -743,11 +715,7 @@ func TestOpCycle(t *testing.T) {
 
 	t.Log("Deleting member2 edge")
 	cursor = "cursor8"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "member",
-		From: dhoId,
-		To:   member2Id,
-	}, true, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("member", dhoId, member2Id), true, cursor)
 	assert.NilError(t, err)
 
 	expectedMemberEdge = []map[string]interface{}{}
@@ -755,7 +723,7 @@ func TestOpCycle(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 
 	t.Logf("Deleting user1 document")
-	userDoc = getUserDoc(user1IdI, user1Hash, "user1")
+	userDoc = getUserDoc(user1IdI, "user1")
 	cursor = "cursor8_1"
 
 	err = cache.DeleteDocument(userDoc, cursor)
@@ -764,7 +732,7 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting member1 document")
-	memberDoc = getMemberDoc(member1IdI, member1Hash, "member1")
+	memberDoc = getMemberDoc(member1IdI, "member1")
 	cursor = "cursor9"
 
 	err = cache.DeleteDocument(memberDoc, cursor)
@@ -773,7 +741,7 @@ func TestOpCycle(t *testing.T) {
 	assertCursor(t, cursor)
 
 	t.Logf("Deleting member2 document")
-	memberDoc = getMemberDoc(member2IdI, member2Hash, "member2")
+	memberDoc = getMemberDoc(member2IdI, "member2")
 	cursor = "cursor10"
 
 	err = cache.DeleteDocument(memberDoc, cursor)
@@ -793,14 +761,15 @@ func TestOpCycle(t *testing.T) {
 func TestDocumentCreationDeduceType(t *testing.T) {
 	setUp("./config-with-special-config.yml")
 	createdDate := "2020-11-12T18:27:47.000"
+	updatedDate := "2020-11-12T19:27:47.000"
 	chainDoc1Id := "1"
 	chainDoc1IdI, _ := strconv.ParseUint(chainDoc1Id, 10, 64)
-	hash := "d4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	chainDoc1 := &domain.ChainDocument{
 		ID:          chainDoc1IdI,
-		Hash:        hash,
 		CreatedDate: createdDate,
+		UpdatedDate: updatedDate,
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -856,10 +825,10 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 		),
 		map[string]interface{}{
 			"docId":            chainDoc1Id,
-			"docId_i":          chainDoc1IdI,
-			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"updatedDate":      "2020-11-12T19:27:47.000Z",
 			"creator":          "dao.hypha",
+			"contract":         "contract1",
 			"type":             "VoteTally",
 			"pass_votePower_a": "0.00 HVOICE",
 			"fail_votePower_a": "1.00 HVOICE",
@@ -885,18 +854,19 @@ func TestMissingCoreEdge(t *testing.T) {
 	setUp("./config-no-special-config.yml")
 	t.Log("Store assignment 1 with related core edge non existant")
 	createdDate := "2020-11-12T18:27:47.000"
+	updatedDate := "2020-11-12T19:27:47.000"
 	period1Id := "21"
 	period1IdI, _ := strconv.ParseUint(period1Id, 10, 64)
 	period1Hash := "a5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	hash := "b5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1 := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        hash,
 		CreatedDate: createdDate,
+		UpdatedDate: updatedDate,
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -949,10 +919,10 @@ func TestMissingCoreEdge(t *testing.T) {
 		expectedType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
-			"hash":                  hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "Assignment",
 			"details_startPeriod_c": period1Hash,
 		},
@@ -966,8 +936,8 @@ func TestMissingCoreEdge(t *testing.T) {
 
 	t.Log("Store core edge")
 
-	period1Doc := getPeriodDoc(period1IdI, period1Hash, 1)
-	period1Instance := getPeriodInstance(period1IdI, period1Hash, 1)
+	period1Doc := getPeriodDoc(period1IdI, 1)
+	period1Instance := getPeriodInstance(period1IdI, 1)
 	cursor = "cursor1"
 	err = cache.StoreDocument(period1Doc, cursor)
 	assert.NilError(t, err)
@@ -977,12 +947,12 @@ func TestMissingCoreEdge(t *testing.T) {
 	t.Log("Store assignment 2 with related core edge")
 	assignment2Id := "2"
 	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
-	hash2 := "c5ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2 := &domain.ChainDocument{
 		ID:          assignment2IdI,
-		Hash:        hash2,
 		CreatedDate: createdDate,
+		UpdatedDate: updatedDate,
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1019,23 +989,16 @@ func TestMissingCoreEdge(t *testing.T) {
 		},
 	}
 
-	expectedType.SetField("details_startPeriod_c_edge",
-		&gql.SimplifiedField{
-			Name: "details_startPeriod_c_edge",
-			Type: "Period",
-		})
-
 	expectedInstance2 := gql.NewSimplifiedInstance(
 		expectedType,
 		map[string]interface{}{
-			"docId":                      assignment2Id,
-			"docId_i":                    assignment2IdI,
-			"hash":                       hash2,
-			"createdDate":                "2020-11-12T18:27:47.000Z",
-			"creator":                    "dao.hypha",
-			"type":                       "Assignment",
-			"details_startPeriod_c":      period1Hash,
-			"details_startPeriod_c_edge": map[string]interface{}{"docId": period1Id},
+			"docId":                 assignment2Id,
+			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"updatedDate":           "2020-11-12T19:27:47.000Z",
+			"creator":               "dao.hypha",
+			"contract":              "contract1",
+			"type":                  "Assignment",
+			"details_startPeriod_c": period1Hash,
 		},
 	)
 
@@ -1045,10 +1008,6 @@ func TestMissingCoreEdge(t *testing.T) {
 	assertInstance(t, expectedInstance2)
 	assertCursor(t, cursor)
 
-	t.Log("Verify assignment 1 has a nil core edge")
-	expectedInstance.SetValue("details_startPeriod_c_edge", nil)
-	assertInstance(t, expectedInstance)
-
 	cursor = "cursor4"
 
 	t.Log("Delete core edge document")
@@ -1057,18 +1016,12 @@ func TestMissingCoreEdge(t *testing.T) {
 	assertInstanceNotExists(t, period1Id, "Period")
 	assertCursor(t, cursor)
 
-	t.Log("Verify assignment 2 has a nil core edge")
-	expectedInstance2.SetValue("details_startPeriod_c_edge", nil)
-	assertInstance(t, expectedInstance2)
-
 	t.Log("Store core edge again")
 	cursor = "cursor5"
 	err = cache.StoreDocument(period1Doc, cursor)
 	assert.NilError(t, err)
 	assertInstance(t, period1Instance)
 	assertCursor(t, cursor)
-
-	expectedInstance2.SetValue("details_startPeriod_c_edge", map[string]interface{}{"docId": period1Id})
 
 	t.Log("Update assignment 2, should relink core edge")
 	cursor = "cursor6"
@@ -1105,12 +1058,12 @@ func TestLogicalIds(t *testing.T) {
 	t.Logf("Storing dho1 document")
 	dhoId := "2"
 	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
-	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1159,7 +1112,7 @@ func TestLogicalIds(t *testing.T) {
 			"details_rootNode_n": {
 				Name:    "details_rootNode_n",
 				Type:    "String",
-				Index:   "exact",
+				Index:   "regexp",
 				IsID:    true,
 				NonNull: true,
 			},
@@ -1175,10 +1128,10 @@ func TestLogicalIds(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
-			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"updatedDate":                    "2020-11-12T19:27:47.000Z",
 			"creator":                        "dao.hypha",
+			"contract":                       "contract1",
 			"type":                           "Dho",
 			"details_rootNode_n":             "dao.hypha",
 			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
@@ -1193,12 +1146,12 @@ func TestLogicalIds(t *testing.T) {
 	t.Logf("Storing dho2 document")
 	dhoId = "3"
 	dhoIdI, _ = strconv.ParseUint(dhoId, 10, 64)
-	dhoHash = "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc = &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1245,10 +1198,10 @@ func TestLogicalIds(t *testing.T) {
 		expectedDhoType,
 		map[string]interface{}{
 			"docId":                          dhoId,
-			"docId_i":                        dhoIdI,
-			"hash":                           dhoHash,
 			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"updatedDate":                    "2020-11-12T19:27:47.000Z",
 			"creator":                        "dao.hypha",
+			"contract":                       "contract1",
 			"type":                           "Dho",
 			"details_rootNode_n":             "dao.beta",
 			"details_hvoiceSalaryPerPhase_a": "4133.14 HVOICE",
@@ -1260,15 +1213,15 @@ func TestLogicalIds(t *testing.T) {
 	assertInstance(t, expectedDHOInstance)
 	assertCursor(t, cursor)
 
-	t.Logf("Storing memeber document")
+	t.Logf("Storing member document")
 	memberId := "31"
 	memberIdI, _ := strconv.ParseUint(memberId, 10, 64)
-	memberHash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	memberDoc := &domain.ChainDocument{
 		ID:          memberIdI,
-		Hash:        memberHash,
 		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "bob",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1317,12 +1270,12 @@ func TestLogicalIds(t *testing.T) {
 			"details_rootNode_n": {
 				Name:  "details_rootNode_n",
 				Type:  "String",
-				Index: "exact",
+				Index: "regexp",
 			},
 			"details_member_n": {
 				Name:    "details_member_n",
 				Type:    "String",
-				Index:   "exact",
+				Index:   "regexp",
 				IsID:    true,
 				NonNull: true,
 			},
@@ -1333,10 +1286,10 @@ func TestLogicalIds(t *testing.T) {
 		expectedMemberType,
 		map[string]interface{}{
 			"docId":              memberId,
-			"docId_i":            memberIdI,
-			"hash":               memberHash,
 			"createdDate":        "2020-11-12T19:27:47.000Z",
+			"updatedDate":        "2020-11-12T19:27:47.000Z",
 			"creator":            "bob",
+			"contract":           "contract1",
 			"type":               "Member",
 			"details_rootNode_n": "dao.beta",
 			"details_member_n":   "bob",
@@ -1356,12 +1309,12 @@ func TestLogicalIdsShouldFailForNonExistantId(t *testing.T) {
 	t.Logf("Storing dho1 document")
 	dhoId := "1"
 	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
-	dhoHash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	dhoDoc := &domain.ChainDocument{
 		ID:          dhoIdI,
-		Hash:        dhoHash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 
@@ -1472,14 +1425,14 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 	)
 	util.AssertInterface(t, votableInterface, currentSchema)
 
-	t.Logf("Checking Profile Type related to User interface")
-	profileDataType := gql.NewSimplifiedType(
-		"ProfileData",
-		map[string]*gql.SimplifiedField{},
-		gql.DocumentSimplifiedInterface,
-	)
-	assert.NilError(t, err)
-	util.AssertType(t, profileDataType, currentSchema)
+	// t.Logf("Checking Profile Type related to User interface")
+	// profileDataType := gql.NewSimplifiedType(
+	// 	"ProfileData",
+	// 	map[string]*gql.SimplifiedField{},
+	// 	gql.DocumentSimplifiedInterface,
+	// )
+	// assert.NilError(t, err)
+	// util.AssertType(t, profileDataType, currentSchema)
 
 	t.Logf("Checking User interface")
 	userInterface := gql.NewSimplifiedInterface(
@@ -1490,14 +1443,10 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 				Type:  gql.GQLType_String,
 				Index: "exact",
 			},
-			"details_profile_c_egde": {
-				Name: "details_profile_c_edge",
-				Type: "ProfileData",
-			},
 			"details_account_n": {
 				Name:  "details_account_n",
 				Type:  gql.GQLType_String,
-				Index: "exact",
+				Index: "regexp",
 			},
 		},
 		[]string{
@@ -1579,12 +1528,12 @@ func TestCustomInterfaces(t *testing.T) {
 	t.Logf("Storing assignment proposal 1 document, has signature fields so it should implement Votable interface")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1668,6 +1617,7 @@ func TestCustomInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -1676,10 +1626,10 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
-			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "AssigProp",
 			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
 			"details_title_s":       "Assignment 1",
@@ -1697,12 +1647,12 @@ func TestCustomInterfaces(t *testing.T) {
 	t.Logf("Storing assignment proposal 2 document, does not have signature fields but because the assignment type already has the interface it should implement it")
 	assignment2Id := "2"
 	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
-	assignment2Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
 		ID:          assignment2IdI,
-		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1782,6 +1732,7 @@ func TestCustomInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -1790,10 +1741,10 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment2Id,
-			"docId_i":               assignment2IdI,
-			"hash":                  assignment2Hash,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "AssigProp",
 			"ballot_expiration_t":   nil,
 			"details_startedAt_t":   "2020-11-15T18:28:47.000Z",
@@ -1811,13 +1762,14 @@ func TestCustomInterfaces(t *testing.T) {
 
 	t.Logf("Storing profile data document to be used as core edge")
 	profileId := "21"
+	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileIdI, _ := strconv.ParseUint(profileId, 10, 64)
-	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
 		ID:          profileIdI,
-		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1863,6 +1815,7 @@ func TestCustomInterfaces(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -1871,10 +1824,10 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
-			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
+			"contract":       "contract1",
 			"type":           "ProfileData",
 			"details_name_s": "User 1",
 		},
@@ -1888,12 +1841,12 @@ func TestCustomInterfaces(t *testing.T) {
 	t.Logf("Storing assignment proposal 3 document, has signature fields for User Interface, but as its an old type it should NOT be added")
 	assignment3Id := "3"
 	assignment3IdI, _ := strconv.ParseUint(assignment3Id, 10, 64)
-	assignment3Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment3Doc := &domain.ChainDocument{
 		ID:          assignment3IdI,
-		Hash:        assignment3Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -1984,16 +1937,13 @@ func TestCustomInterfaces(t *testing.T) {
 					Type:  gql.GQLType_String,
 					Index: "exact",
 				},
-				"details_profile_c_edge": {
-					Name: "details_profile_c_edge",
-					Type: "ProfileData",
-				},
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -2001,21 +1951,20 @@ func TestCustomInterfaces(t *testing.T) {
 	expectedAssignment3Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
-			"docId":                  assignment3Id,
-			"docId_i":                assignment3IdI,
-			"hash":                   assignment3Hash,
-			"createdDate":            "2020-11-12T18:27:48.000Z",
-			"creator":                "dao.hypha",
-			"type":                   "AssigProp",
-			"ballot_expiration_t":    nil,
-			"details_startedAt_t":    nil,
-			"details_title_s":        "Assignment 3",
-			"details_description_s":  nil,
-			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
-			"details_account_n":      "user1",
-			"vote":                   make([]map[string]interface{}, 0),
-			"votetally":              make([]map[string]interface{}, 0),
+			"docId":                 assignment3Id,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
+			"creator":               "dao.hypha",
+			"contract":              "contract1",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   nil,
+			"details_startedAt_t":   nil,
+			"details_title_s":       "Assignment 3",
+			"details_description_s": nil,
+			"details_profile_c":     profileHash,
+			"details_account_n":     "user1",
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
 		},
 	)
 	cursor = "cursor4"
@@ -2027,12 +1976,12 @@ func TestCustomInterfaces(t *testing.T) {
 	t.Logf("Storing vote document to be used as edge that is part of the interface")
 	voteId := "41"
 	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
-	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
 		ID:          voteIdI,
-		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2078,6 +2027,7 @@ func TestCustomInterfaces(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2086,10 +2036,10 @@ func TestCustomInterfaces(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
-			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
+			"contract":         "contract1",
 			"type":             "Vote",
 			"details_result_s": "For",
 		},
@@ -2102,11 +2052,7 @@ func TestCustomInterfaces(t *testing.T) {
 
 	t.Log("Adding vote edge")
 	cursor = "cursor7"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "vote",
-		From: assignment3Id,
-		To:   voteId,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("vote", assignment3Id, voteId), false, cursor)
 	assert.NilError(t, err)
 
 	expectedVoteEdge := []map[string]interface{}{
@@ -2125,12 +2071,12 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 	t.Logf("Storing assign badge proposal document, is of votable type")
 	assignBadge1Id := "1"
 	assignBadge1IdI, _ := strconv.ParseUint(assignBadge1Id, 10, 64)
-	assignBadge1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignBadge1Doc := &domain.ChainDocument{
 		ID:          assignBadge1IdI,
-		Hash:        assignBadge1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2219,6 +2165,7 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -2227,10 +2174,10 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 		expectedAssignBadgeType,
 		map[string]interface{}{
 			"docId":                 assignBadge1Id,
-			"docId_i":               assignBadge1IdI,
-			"hash":                  assignBadge1Hash,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "Assignbadge",
 			"ballot_expiration_t":   nil,
 			"ballot_votes_i":        11,
@@ -2255,12 +2202,12 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 	t.Logf("Storing assign badge proposal document, is of votable type")
 	payout1Id := "1"
 	payout1IdI, _ := strconv.ParseUint(payout1Id, 10, 64)
-	payout1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	payout1Doc := &domain.ChainDocument{
 		ID:          payout1IdI,
-		Hash:        payout1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2354,6 +2301,7 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "Editable"},
 	}
@@ -2362,10 +2310,10 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 		expectedPayoutType,
 		map[string]interface{}{
 			"docId":                 payout1Id,
-			"docId_i":               payout1IdI,
-			"hash":                  payout1Hash,
 			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "Payout",
 			"ballot_expiration_t":   nil,
 			"ballot_votes_i":        11,
@@ -2394,9 +2342,10 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
 		ID:          profileIdI,
-		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2442,6 +2391,7 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2450,10 +2400,10 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
-			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
+			"contract":       "contract1",
 			"type":           "ProfileData",
 			"details_name_s": "User 1",
 		},
@@ -2467,12 +2417,12 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 	t.Logf("Storing assignment badge document, has type for Votable and signature fields for User interfaces, both should be added")
 	assignbadge1Id := "1"
 	assignbadge1IdI, _ := strconv.ParseUint(assignbadge1Id, 10, 64)
-	assignbadge1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignbadge1Doc := &domain.ChainDocument{
 		ID:          assignbadge1IdI,
-		Hash:        assignbadge1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2579,16 +2529,14 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 					Type:  gql.GQLType_String,
 					Index: "exact",
 				},
-				"details_profile_c_edge": {
-					Name: "details_profile_c_edge",
-					Type: "ProfileData",
-				},
+
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "User"},
 	}
@@ -2596,21 +2544,20 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 	expectedAssignbadge1Instance := gql.NewSimplifiedInstance(
 		expectedAssignbadgeType,
 		map[string]interface{}{
-			"docId":                  assignbadge1Id,
-			"docId_i":                assignbadge1IdI,
-			"hash":                   assignbadge1Hash,
-			"createdDate":            "2020-11-12T18:27:48.000Z",
-			"creator":                "dao.hypha",
-			"type":                   "Assignbadge",
-			"ballot_expiration_t":    nil,
-			"ballot_votes_i":         11,
-			"details_title_s":        "Assignment 1",
-			"details_description_s":  nil,
-			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
-			"details_account_n":      "user2",
-			"vote":                   make([]map[string]interface{}, 0),
-			"votetally":              make([]map[string]interface{}, 0),
+			"docId":                 assignbadge1Id,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
+			"creator":               "dao.hypha",
+			"contract":              "contract1",
+			"type":                  "Assignbadge",
+			"ballot_expiration_t":   nil,
+			"ballot_votes_i":        11,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"details_profile_c":     profileHash,
+			"details_account_n":     "user2",
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
 		},
 	)
 	cursor = "cursor2"
@@ -2631,9 +2578,10 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	profileHash := "c4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
 		ID:          profileIdI,
-		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2679,6 +2627,7 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2687,10 +2636,10 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
-			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
+			"contract":       "contract1",
 			"type":           "ProfileData",
 			"details_name_s": "User 1",
 		},
@@ -2704,12 +2653,12 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	t.Logf("Storing assignment proposal document, has signature fields for Votable and User interfaces, both should be added")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2823,16 +2772,13 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 					Type:  gql.GQLType_String,
 					Index: "exact",
 				},
-				"details_profile_c_edge": {
-					Name: "details_profile_c_edge",
-					Type: "ProfileData",
-				},
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable", "User"},
 	}
@@ -2840,21 +2786,20 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
-			"docId":                  assignment1Id,
-			"docId_i":                assignment1IdI,
-			"hash":                   assignment1Hash,
-			"createdDate":            "2020-11-12T18:27:48.000Z",
-			"creator":                "dao.hypha",
-			"type":                   "AssigProp",
-			"ballot_expiration_t":    "2020-11-15T18:27:47.000Z",
-			"ballot_votes_i":         11,
-			"details_title_s":        "Assignment 1",
-			"details_description_s":  nil,
-			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
-			"details_account_n":      "user2",
-			"vote":                   make([]map[string]interface{}, 0),
-			"votetally":              make([]map[string]interface{}, 0),
+			"docId":                 assignment1Id,
+			"createdDate":           "2020-11-12T18:27:48.000Z",
+			"updatedDate":           "2020-11-12T19:27:48.000Z",
+			"creator":               "dao.hypha",
+			"contract":              "contract1",
+			"type":                  "AssigProp",
+			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
+			"ballot_votes_i":        11,
+			"details_title_s":       "Assignment 1",
+			"details_description_s": nil,
+			"details_profile_c":     profileHash,
+			"details_account_n":     "user2",
+			"vote":                  make([]map[string]interface{}, 0),
+			"votetally":             make([]map[string]interface{}, 0),
 		},
 	)
 	cursor = "cursor2"
@@ -2874,9 +2819,10 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	profileHash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	profileDoc := &domain.ChainDocument{
 		ID:          profileIdI,
-		Hash:        profileHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -2922,6 +2868,7 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -2930,10 +2877,10 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 		expectedProfileType,
 		map[string]interface{}{
 			"docId":          profileId,
-			"docId_i":        profileIdI,
-			"hash":           profileHash,
 			"createdDate":    "2020-11-12T18:27:48.000Z",
+			"updatedDate":    "2020-11-12T19:27:48.000Z",
 			"creator":        "dao.hypha",
+			"contract":       "contract1",
 			"type":           "ProfileData",
 			"details_name_s": "User 1",
 		},
@@ -2947,12 +2894,12 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	t.Logf("Storing assignment proposal 1 document, has signature fields for User Interface, it should be added")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "b4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3016,16 +2963,13 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 					Type:  gql.GQLType_String,
 					Index: "exact",
 				},
-				"details_profile_c_edge": {
-					Name: "details_profile_c_edge",
-					Type: "ProfileData",
-				},
 				"details_account_n": {
 					Name:  "details_account_n",
 					Type:  gql.GQLType_String,
-					Index: "exact",
+					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "User"},
 	}
@@ -3033,16 +2977,15 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 	expectedAssignment1Instance := gql.NewSimplifiedInstance(
 		expectedAssignmentType,
 		map[string]interface{}{
-			"docId":                  assignment1Id,
-			"docId_i":                assignment1IdI,
-			"hash":                   assignment1Hash,
-			"createdDate":            "2020-11-12T18:27:48.000Z",
-			"creator":                "dao.hypha",
-			"type":                   "AssigProp",
-			"details_title_s":        "Assignment 3",
-			"details_profile_c":      profileHash,
-			"details_profile_c_edge": doccache.GetEdgeValue(profileId),
-			"details_account_n":      "user1",
+			"docId":             assignment1Id,
+			"createdDate":       "2020-11-12T18:27:48.000Z",
+			"updatedDate":       "2020-11-12T19:27:48.000Z",
+			"creator":           "dao.hypha",
+			"contract":          "contract1",
+			"type":              "AssigProp",
+			"details_title_s":   "Assignment 3",
+			"details_profile_c": profileHash,
+			"details_account_n": "user1",
 		},
 	)
 	cursor = "cursor2"
@@ -3059,12 +3002,12 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	t.Logf("Storing assignment proposal 1 document")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3127,6 +3070,7 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Extendable"},
 	}
@@ -3135,10 +3079,10 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                   assignment1Id,
-			"docId_i":                 assignment1IdI,
-			"hash":                    assignment1Hash,
 			"createdDate":             "2020-11-12T19:27:47.000Z",
+			"updatedDate":             "2020-11-12T19:27:47.000Z",
 			"creator":                 "dao.hypha",
+			"contract":                "contract1",
 			"type":                    "AssigProp",
 			"details_title_s":         "Assignment 0",
 			"details_extensionName_s": "Vote extension 1",
@@ -3154,12 +3098,12 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	t.Logf("Storing Vote document to be used as edge which type should be upgraded to document")
 	voteId := "21"
 	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
-	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
 		ID:          voteIdI,
-		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3205,6 +3149,7 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -3213,10 +3158,10 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
-			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
+			"contract":         "contract1",
 			"type":             "Vote",
 			"details_result_s": "For",
 		},
@@ -3229,11 +3174,7 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 
 	t.Log("Adding vote edge")
 	cursor = "cursor7"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "extension",
-		From: assignment1Id,
-		To:   voteId,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("extension", assignment1Id, voteId), false, cursor)
 	assert.NilError(t, err)
 
 	expectedAssignmentType.SetField("extension", &gql.SimplifiedField{
@@ -3253,12 +3194,12 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 	t.Logf("Storing assignment proposal 2 document")
 	assignment2Id := "2"
 	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
-	assignment2Hash := "y7ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
 		ID:          assignment2IdI,
-		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3310,10 +3251,10 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                   assignment2Id,
-			"docId_i":                 assignment2IdI,
-			"hash":                    assignment2Hash,
 			"createdDate":             "2020-11-12T18:27:47.000Z",
+			"updatedDate":             "2020-11-12T19:27:47.000Z",
 			"creator":                 "dao.hypha",
+			"contract":                "contract1",
 			"type":                    "AssigProp",
 			"details_title_s":         "Assignment 1",
 			"details_extensionName_s": "Vote extension",
@@ -3338,12 +3279,12 @@ func TestCustomInterfacesShouldFailForTypeWithoutIDField(t *testing.T) {
 	t.Logf("Storing assignment proposal 1 document without interface ID field")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "z4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3399,12 +3340,12 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 	t.Logf("Storing assignment proposal 1 document, has signature fields so it should implement Votable interface")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3488,6 +3429,7 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -3496,10 +3438,10 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
-			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "AssigProp",
 			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
 			"details_title_s":       "Assignment 1",
@@ -3517,12 +3459,12 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 	t.Logf("Storing assignment proposal 2 document, does not have id field of implementing interface")
 	assignment2Id := "2"
 	assignment2IdI, _ := strconv.ParseUint(assignment2Id, 10, 64)
-	assignment2Hash := "a4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment2Doc := &domain.ChainDocument{
 		ID:          assignment2IdI,
-		Hash:        assignment2Hash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3572,12 +3514,12 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	t.Logf("Storing assignment proposal 1 document")
 	assignment1Id := "1"
 	assignment1IdI, _ := strconv.ParseUint(assignment1Id, 10, 64)
-	assignment1Hash := "y4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	assignment1Doc := &domain.ChainDocument{
 		ID:          assignment1IdI,
-		Hash:        assignment1Hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3661,6 +3603,7 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 					IsArray: true,
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document", "Votable"},
 	}
@@ -3669,10 +3612,10 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 		expectedAssignmentType,
 		map[string]interface{}{
 			"docId":                 assignment1Id,
-			"docId_i":               assignment1IdI,
-			"hash":                  assignment1Hash,
 			"createdDate":           "2020-11-12T18:27:47.000Z",
+			"updatedDate":           "2020-11-12T19:27:47.000Z",
 			"creator":               "dao.hypha",
+			"contract":              "contract1",
 			"type":                  "AssigProp",
 			"ballot_expiration_t":   "2020-11-15T18:27:47.000Z",
 			"details_title_s":       "Assignment 1",
@@ -3690,12 +3633,12 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 	t.Logf("Storing VoteOld document to be used as edge that is incompatible with interface")
 	voteId := "21"
 	voteIdI, _ := strconv.ParseUint(voteId, 10, 64)
-	voteHash := "g4ec74355830056924c83f20ffb1a22ad0c5145a96daddf6301897a092de951e"
 	voteDoc := &domain.ChainDocument{
 		ID:          voteIdI,
-		Hash:        voteHash,
 		CreatedDate: "2020-11-12T18:27:48.000",
+		UpdatedDate: "2020-11-12T19:27:48.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3741,6 +3684,7 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 					Index: "regexp",
 				},
 			},
+			WithSubscription: true,
 		},
 		Interfaces: []string{"Document"},
 	}
@@ -3749,10 +3693,10 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 		expectedVoteType,
 		map[string]interface{}{
 			"docId":            voteId,
-			"docId_i":          voteIdI,
-			"hash":             voteHash,
 			"createdDate":      "2020-11-12T18:27:48.000Z",
+			"updatedDate":      "2020-11-12T19:27:48.000Z",
 			"creator":          "dao.hypha",
+			"contract":         "contract1",
 			"type":             "VoteOld",
 			"details_result_s": "For",
 		},
@@ -3765,11 +3709,7 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 
 	t.Log("Adding vote edge")
 	cursor = "cursor7"
-	err = cache.MutateEdge(&domain.ChainEdge{
-		Name: "vote",
-		From: assignment1Id,
-		To:   voteId,
-	}, false, cursor)
+	err = cache.MutateEdge(domain.NewChainEdge("vote", assignment1Id, voteId), false, cursor)
 	assert.ErrorContains(t, err, "For type AssigProp to implement interface Votable the field vote must have type")
 
 }
@@ -3785,11 +3725,13 @@ func assertDoccacheConfig(t *testing.T, cache *doccache.Doccache, cfg *config.Co
 	expected := gql.NewSimplifiedInstance(
 		gql.DoccacheConfigSimplifiedType,
 		map[string]interface{}{
-			"id":             "dc1",
-			"contract":       cfg.ContractName,
-			"eosEndpoint":    cfg.EosEndpoint,
-			"documentsTable": cfg.DocTableName,
-			"edgesTable":     cfg.EdgeTableName,
+			"id":              "dc1",
+			"contract":        cfg.ContractName,
+			"eosEndpoint":     cfg.EosEndpoint,
+			"documentsTable":  cfg.DocTableName,
+			"edgesTable":      cfg.EdgeTableName,
+			"elasticEndpoint": cfg.ElasticEndpoint,
+			"elasticApiKey":   cfg.ElasticApiKey,
 		},
 	)
 	actual, err := cache.GetDoccacheConfigInstance()
@@ -3815,12 +3757,13 @@ func assertInstanceNotExists(t *testing.T, docId, typeName string) {
 	assert.Assert(t, actual == nil)
 }
 
-func getMemberDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
+func getMemberDoc(docIdI uint64, account string) *domain.ChainDocument {
 	return &domain.ChainDocument{
 		ID:          docIdI,
-		Hash:        hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     account,
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3858,12 +3801,13 @@ func getMemberDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
+func getUserDoc(docIdI uint64, account string) *domain.ChainDocument {
 	return &domain.ChainDocument{
 		ID:          docIdI,
-		Hash:        hash,
 		CreatedDate: "2020-11-12T19:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     account,
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3901,42 +3845,43 @@ func getUserDoc(docIdI uint64, hash, account string) *domain.ChainDocument {
 	}
 }
 
-func getUserInstance(docIdI uint64, hash, account string) *gql.SimplifiedInstance {
+func getUserInstance(docIdI uint64, account string) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		userType,
 		map[string]interface{}{
 			"docId":             strconv.FormatUint(docIdI, 10),
-			"docId_i":           docIdI,
-			"hash":              hash,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
+			"updatedDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
+			"contract":          "contract1",
 			"type":              "User",
 			"details_account_n": account,
 		},
 	)
 }
 
-func getMemberInstance(docIdI uint64, hash, account string) *gql.SimplifiedInstance {
+func getMemberInstance(docIdI uint64, account string) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		memberType,
 		map[string]interface{}{
 			"docId":             strconv.FormatUint(docIdI, 10),
-			"docId_i":           docIdI,
-			"hash":              hash,
 			"createdDate":       "2020-11-12T19:27:47.000Z",
+			"updatedDate":       "2020-11-12T19:27:47.000Z",
 			"creator":           account,
+			"contract":          "contract1",
 			"type":              "Member",
 			"details_account_n": account,
 		},
 	)
 }
 
-func getPeriodDoc(id uint64, hash string, number int64) *domain.ChainDocument {
+func getPeriodDoc(id uint64, number int64) *domain.ChainDocument {
 	return &domain.ChainDocument{
 		ID:          id,
-		Hash:        hash,
 		CreatedDate: "2020-11-12T18:27:47.000",
+		UpdatedDate: "2020-11-12T19:27:47.000",
 		Creator:     "dao.hypha",
+		Contract:    "contract1",
 		ContentGroups: [][]*domain.ChainContent{
 			{
 				{
@@ -3974,15 +3919,15 @@ func getPeriodDoc(id uint64, hash string, number int64) *domain.ChainDocument {
 	}
 }
 
-func getPeriodInstance(docId uint64, hash string, number int64) *gql.SimplifiedInstance {
+func getPeriodInstance(docId uint64, number int64) *gql.SimplifiedInstance {
 	return gql.NewSimplifiedInstance(
 		periodType,
 		map[string]interface{}{
 			"docId":            strconv.FormatUint(docId, 10),
-			"docId_i":          docId,
-			"hash":             hash,
 			"createdDate":      "2020-11-12T18:27:47.000Z",
+			"updatedDate":      "2020-11-12T19:27:47.000Z",
 			"creator":          "dao.hypha",
+			"contract":         "contract1",
 			"type":             "Period",
 			"details_number_i": number,
 		},

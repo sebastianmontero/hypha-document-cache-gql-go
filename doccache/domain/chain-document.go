@@ -35,7 +35,7 @@ var ContentTypeIndexMap = map[string]string{
 	ContentType_Asset:       "term",
 	ContentType_Checksum256: "exact",
 	ContentType_Int64:       "int64",
-	ContentType_Name:        "exact",
+	ContentType_Name:        "regexp",
 	ContentType_Time:        "hour",
 	ContentType_String:      "regexp",
 }
@@ -116,37 +116,35 @@ func (m *ChainContent) String() string {
 	return fmt.Sprintf("ChainContent{Label: %v, Value: %v}", m.Label, m.Value)
 }
 
-//ChainCertificate domain object
-type ChainCertificate struct {
-	Certifier         string `json:"certifier,omitempty"`
-	Notes             string `json:"notes,omitempty"`
-	CertificationDate string `json:"certification_date,omitempty"`
-}
-
-func (m *ChainCertificate) String() string {
-	return fmt.Sprintf("ChainCertificate{Certifier: %v, Notes: %v, CertificationDate: %v}", m.Certifier, m.Notes, m.CertificationDate)
-}
-
 //ChainDocument domain object
 type ChainDocument struct {
-	ID            uint64              `json:"id"`
-	Hash          string              `json:"hash,omitempty"`
-	CreatedDate   string              `json:"created_date,omitempty"`
-	Creator       string              `json:"creator,omitempty"`
-	ContentGroups [][]*ChainContent   `json:"content_groups,omitempty"`
-	Certificates  []*ChainCertificate `json:"certificates,omitempty"`
+	ID            uint64            `json:"id"`
+	CreatedDate   string            `json:"created_date,omitempty"`
+	UpdatedDate   string            `json:"updated_date,omitempty"`
+	Creator       string            `json:"creator,omitempty"`
+	Contract      string            `json:"contract,omitempty"`
+	ContentGroups [][]*ChainContent `json:"content_groups,omitempty"`
+}
+
+func (m *ChainDocument) GetDocId() string {
+	return strconv.FormatUint(m.ID, 10)
 }
 
 func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDoc, error) {
 
 	fields := make(map[string]*gql.SimplifiedField)
 	checksumFields := make([]string, 0)
+	createdDate := FormatDateTime(m.CreatedDate)
+	updatedDate := createdDate
+	if m.UpdatedDate != "" {
+		updatedDate = FormatDateTime(m.UpdatedDate)
+	}
 	values := map[string]interface{}{
-		"docId":       strconv.FormatUint(m.ID, 10),
-		"docId_i":     m.ID,
-		"hash":        m.Hash,
+		"docId":       m.GetDocId(),
 		"creator":     m.Creator,
-		"createdDate": FormatDateTime(m.CreatedDate),
+		"createdDate": createdDate,
+		"updatedDate": updatedDate,
+		"contract":    m.Contract,
 	}
 
 	for i, contentGroup := range m.ContentGroups {
@@ -280,7 +278,7 @@ func toUntypedMap(typed map[string]*gql.SimplifiedField) map[string]*gql.Simplif
 }
 
 func (m *ChainDocument) String() string {
-	return fmt.Sprintf("ChainDocument{ID: %v, CreatedDate: %v, Creator: %v, Contents: %v, Certificates: %v}", m.ID, m.CreatedDate, m.Creator, m.ContentGroups, m.Certificates)
+	return fmt.Sprintf("ChainDocument{ID: %v, CreatedDate: %v, UpdatedDate: %v, Creator: %v, Contents: %v}", m.ID, m.CreatedDate, m.UpdatedDate, m.Creator, m.ContentGroups)
 }
 
 func FormatDateTime(datetime string) string {

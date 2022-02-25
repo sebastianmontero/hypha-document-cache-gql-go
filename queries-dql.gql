@@ -1,0 +1,280 @@
+query assignments($dao: string, $member: string) {
+	assignments as var(func: type(Assignment))@cascade{
+		Assignment.ownedby @filter(eq(Member.details_member_n, $member)){
+			Member.details_member_n
+  	}
+    Assignment.dao@filter(eq(Dao.details_daoName_n, $dao)) 		{
+      Dao.details_daoName_n
+    }
+}
+    assignments(func: uid(assignments)){
+			Assignment.system_nodeLabel_s
+    }
+  }
+
+  query votes($dao: string, $member: string) {
+	query(func: type(Vote)) {
+		Vote.ownedby @filter(eq(Member.details_member_n, $member)){
+			Member.details_member_n
+  	}
+    Vote.voteon @filter(eq(Role.dao.Dao.details_daoName_n, $dao) or eq(Assignment.dao.Dao.details_daoName_n, $dao) or eq(Badge.dao.Dao.details_daoName_n, $dao)) {
+    	Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+      Assignment.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+    	Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+ 			}
+}
+	}
+  }
+
+
+query votes($dao: string, $member: string) {
+	query(func: type(Vote)) {
+		Vote.ownedby @filter(eq(Member.details_member_n, $member)){
+			Member.details_member_n
+  	}
+    Vote.voteon @filter(has(Role.dao) or has(Assignment.dao) or has(Badge.dao)) {
+    	Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+      Assignment.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+    	Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+ 			}
+}
+	}
+  }
+
+
+query votes($dao: string, $member: string) {
+	query(func: type(Vote)) @filter(has(Vote.ownedby) and has(Vote.voteon)) {
+		Vote.ownedby @filter(eq(Member.details_member_n, $member)){
+			Member.details_member_n
+  	}
+    Vote.voteon @filter(has(Role.dao) or has(Assignment.dao) or has(Badge.dao)) {
+    	Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+      Assignment.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+    	}
+    	Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+				dao_name: Dao.details_daoName_n
+ 			}
+}
+	}
+  }
+
+
+
+
+query votes($dao: string, $member: string) {
+  roles as var(func: type(Role)) @cascade{
+    Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  assignments as var(func: type(Assignment)) @cascade{
+    Assignment.dao @filter(eq(Dao.details_daoName_n, $dao))			 {
+      Dao.details_daoName_n
+    }
+  }
+  badges as var(func: type(Badge)) @cascade{
+    Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  member as var(func: eq(Member.details_member_n, $member)){
+		uid
+  }
+  query(func: type(Vote)) @filter(uid_in(Vote.ownedby, uid(member)) and (uid_in(Vote.voteon, uid(roles)) or uid_in(Vote.voteon, uid(assignments)) or uid_in(Vote.voteon, uid(badges)))) {
+    Vote.system_nodeLabel_s
+  }
+}
+
+
+query votes($dao: string, $member: string) {
+  roles as var(func: type(Role)) @cascade{
+    Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  assignments as var(func: type(Assignment)) @cascade{
+    Assignment.dao @filter(eq(Dao.details_daoName_n, $dao))			 {
+      Dao.details_daoName_n
+    }
+  }
+  badges as var(func: type(Badge)) @cascade{
+    Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  member as var(func: eq(Member.details_member_n, $member)){
+		uid
+  }
+  query(func: type(Vote)) @filter(uid_in(Vote.ownedby, uid(member)) and (uid_in(Vote.voteon, uid(roles)) or uid_in(Vote.voteon, uid(assignments)) or uid_in(Vote.voteon, uid(badges)))) {
+    Vote.system_nodeLabel_s
+    Vote.vote_date_t
+    Vote.vote_notes_s
+    Vote.vote_votePower_a
+    Vote.vote_voter_n
+    Vote.voteon{
+    	Document.type
+			Role.system_nodeLabel_s
+      Role.dao{
+				Dao.details_daoName_n
+      }
+      
+			Assignment.system_nodeLabel_s
+      Assignment.dao{
+				Dao.details_daoName_n
+    	}   
+			Badge.system_nodeLabel_s
+      Badge.dao{
+				Dao.details_daoName_n
+    	}
+    }
+    Vote.ownedby{
+			Member.details_member_n
+  	}
+  }
+}
+
+
+query q($dao: string, $member: string, $first: int, $offset: int) {
+  roles as var(func: type(Role)) @cascade{
+    Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  assignments as var(func: type(Assignment)) @cascade{
+    Assignment.dao @filter(eq(Dao.details_daoName_n, $dao))			 {
+      Dao.details_daoName_n
+    }
+  }
+  badges as var(func: type(Badge)) @cascade{
+    Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  queryVotesByDaoAndMember(func: type(Vote), orderdesc:Vote.vote_date_t, first: $first, offset: $offset) @filter(eq(Vote.vote_voter_n, $member) and (uid_in(Vote.voteon, uid(roles)) or uid_in(Vote.voteon, uid(assignments)) or uid_in(Vote.voteon, uid(badges)))) {
+    type: Document.type
+    creator: Document.creator
+    createdDate: Document.createdDate
+    docId: Document.docId
+    system_nodeLabel_s: Vote.system_nodeLabel_s
+    vote_vote_s: Vote.vote_vote_s
+    vote_voter_n: Vote.vote_voter_n
+    vote_votePower_a: Vote.vote_votePower_a
+    vote_date_t: Vote.vote_date_t
+    vote_notes_s: Vote.vote_notes_s
+    voteon: Vote.voteon{
+      dgraph.type
+    	type: Document.type
+			system_nodeLabel_s: Role.system_nodeLabel_s
+      dao: Role.dao{
+				details_daoName_n: Dao.details_daoName_n
+      }
+      
+			system_nodeLabel_s: Assignment.system_nodeLabel_s
+      dao: Assignment.dao{
+				details_daoName_n: Dao.details_daoName_n
+    	}   
+			system_nodeLabel_s: Badge.system_nodeLabel_s
+      dao: Badge.dao{
+				details_daoName_n: Dao.details_daoName_n
+    	}
+    }
+    ownedby: Vote.ownedby{
+			details_member_n: Member.details_member_n
+  	}
+  }
+}
+
+query q($dao: string, $member: string, $first: int, $offset: int) {
+  roles as var(func: type(Role)) @cascade{
+    Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  assignments as var(func: type(Assignment)) @cascade{
+    Assignment.dao @filter(eq(Dao.details_daoName_n, $dao))			 {
+      Dao.details_daoName_n
+    }
+  }
+  badges as var(func: type(Badge)) @cascade{
+    Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+      Dao.details_daoName_n
+    }
+  }
+  queryVotesByDaoAndMember(func: type(Vote), orderdesc:Vote.vote_date_t, first: $first, offset: $offset) @filter(eq(Vote.vote_voter_n, $member) and (uid_in(Vote.voteon, uid(roles)) or uid_in(Vote.voteon, uid(assignments)) or uid_in(Vote.voteon, uid(badges)))) {
+    type: Document.type
+    creator: Document.creator
+    createdDate: Document.createdDate
+    docId: Document.docId
+    system_nodeLabel_s: Vote.system_nodeLabel_s
+    vote_vote_s: Vote.vote_vote_s
+    vote_voter_n: Vote.vote_voter_n
+    vote_votePower_a: Vote.vote_votePower_a
+    vote_date_t: Vote.vote_date_t
+    vote_notes_s: Vote.vote_notes_s
+    voteon: Vote.voteon{
+      dgraph.type
+    	type: Document.type
+    }
+    ownedby: Vote.ownedby{
+			details_member_n: Member.details_member_n
+  	}
+  }
+}
+
+
+
+type Query {
+  queryVotesByDaoAndMember(dao: String!, member: String!, first: Int!, offset: Int!): [Vote] @custom(dql: """
+    query q($dao: string, $member: string, $first: int, $offset: int) {
+    roles as var(func: type(Role)) @cascade{
+      Role.dao @filter(eq(Dao.details_daoName_n, $dao)){
+        Dao.details_daoName_n
+      }
+    }
+    assignments as var(func: type(Assignment)) @cascade{
+      Assignment.dao @filter(eq(Dao.details_daoName_n, $dao))			 {
+        Dao.details_daoName_n
+      }
+    }
+    badges as var(func: type(Badge)) @cascade{
+      Badge.dao @filter(eq(Dao.details_daoName_n, $dao)){
+        Dao.details_daoName_n
+      }
+    }
+    queryVotesByDaoAndMember(func: type(Vote), orderdesc:Vote.vote_date_t, first: $first, offset: $offset) @filter(eq(Vote.vote_voter_n, $member) and (uid_in(Vote.voteon, uid(roles)) or uid_in(Vote.voteon, uid(assignments)) or uid_in(Vote.voteon, uid(badges)))) {
+      type: Document.type
+      creator: Document.creator
+      createdDate: Document.createdDate
+      docId: Document.docId
+
+      system_nodeLabel_s: Vote.system_nodeLabel_s
+      vote_vote_s: Vote.vote_vote_s
+      vote_voter_n: Vote.vote_voter_n
+      vote_votePower_a: Vote.vote_votePower_a
+      vote_date_t: Vote.vote_date_t
+      vote_notes_s: Vote.vote_notes_s
+      voteon: Vote.voteon{
+        dgraph.type
+        type: Document.type
+      }
+      ownedby: Vote.ownedby{
+        details_member_n: Member.details_member_n
+      }
+    }
+  }
+	""")
+
+}

@@ -12,19 +12,6 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		NonNull: true,
 		Index:   "exact",
 	},
-	"docId_i": {
-		Name:    "docId_i",
-		Type:    GQLType_Int64,
-		NonNull: true,
-		Index:   "int64",
-	},
-	"hash": {
-		IsID:    true,
-		Name:    "hash",
-		Type:    "String",
-		NonNull: true,
-		Index:   "exact",
-	},
 	"type": {
 		Name:    "type",
 		Type:    "String",
@@ -35,7 +22,7 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		Name:    "creator",
 		Type:    "String",
 		NonNull: true,
-		Index:   "exact",
+		Index:   "regexp",
 	},
 	"createdDate": {
 		Name:    "createdDate",
@@ -43,27 +30,32 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		NonNull: true,
 		Index:   "hour",
 	},
+	"updatedDate": {
+		Name:    "updatedDate",
+		Type:    "DateTime",
+		NonNull: true,
+		Index:   "hour",
+	},
+	"contract": {
+		Name:    "contract",
+		Type:    "String",
+		NonNull: true,
+		Index:   "exact",
+	},
 }
 
 const DocumentFields = `
 		docId: String! @id @search(by: [exact])
-		docId_i: Int64! @search(by: [int64])
-		hash: String! @id @search(by: [exact])
 		type: String! @search(by: [exact])
-		creator: String! @search(by: [exact])
+		creator: String! @search(by: [regexp])
 		createdDate: DateTime! @search(by: [hour])
+		updatedDate: DateTime! @search(by: [hour])
+		contract: String! @search(by: [exact])
 `
 
 const BaseSchema = `
 
-	type DocumentCertificate {
-		id: ID!
-		certifier: String! @search(by: [exact])
-		notes: String! @search(by: [term])
-		certification_date: DateTime! @search(by: [hour])
-	}
-
-	interface Document {` +
+	interface Document @withSubscription {` +
 	DocumentFields + `
 	}
 
@@ -78,6 +70,8 @@ const BaseSchema = `
 		eosEndpoint: String!
 		documentsTable: String!
 		edgesTable: String!
+		elasticEndpoint: String!
+		elasticApiKey: String!
 	}
 
 	type TypeVersion {
@@ -89,8 +83,9 @@ const BaseSchema = `
 
 var DocumentSimplifiedInterface = &SimplifiedInterface{
 	SimplifiedBaseType: &SimplifiedBaseType{
-		Name:   "Document",
-		Fields: DocumentFieldArgs,
+		Name:             "Document",
+		Fields:           DocumentFieldArgs,
+		WithSubscription: true,
 	},
 }
 
@@ -142,6 +137,16 @@ var DoccacheConfigSimplifiedType = &SimplifiedType{
 			},
 			"edgesTable": {
 				Name:    "edgesTable",
+				Type:    "String",
+				NonNull: true,
+			},
+			"elasticEndpoint": {
+				Name:    "elasticEndpoint",
+				Type:    "String",
+				NonNull: true,
+			},
+			"elasticApiKey": {
+				Name:    "elasticApiKey",
 				Type:    "String",
 				NonNull: true,
 			},

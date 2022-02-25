@@ -3,14 +3,16 @@ package gql
 import "fmt"
 
 type SimplifiedBaseType struct {
-	Name   string
-	Fields map[string]*SimplifiedField
+	Name             string
+	WithSubscription bool
+	Fields           map[string]*SimplifiedField
 }
 
 func NewSimplifiedBaseType(name string, fields map[string]*SimplifiedField) *SimplifiedBaseType {
 	return &SimplifiedBaseType{
-		Name:   name,
-		Fields: fields,
+		Name:             name,
+		WithSubscription: true,
+		Fields:           fields,
 	}
 }
 
