@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"time"
 
 	"github.com/dfuse-io/bstream"
 	pbcodec "github.com/dfuse-io/dfuse-eosio/pb/dfuse/eosio/codec/v1"
@@ -114,6 +115,8 @@ func main() {
 	if len(os.Args) != 2 {
 		log.Panic(nil, "Config file has to be specified as the only cmd argument")
 	}
+	log.Infof("Sleeping for a while to let dgraph start...")
+	time.Sleep(time.Minute * 4)
 	config, err := config.LoadConfig(os.Args[1])
 	if err != nil {
 		log.Panicf(err, "Unable to load config file: %v", os.Args[1])
