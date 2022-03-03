@@ -62,7 +62,7 @@ func TestUpdateSchema(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"role": {
 				Name:    "role",
@@ -106,7 +106,7 @@ func TestUpdateSchema(t *testing.T) {
 					Name:    "name",
 					Type:    "String",
 					NonNull: true,
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 				},
 			},
 		},
@@ -124,7 +124,7 @@ func TestUpdateSchema(t *testing.T) {
 	// 				Name:    "assignee",
 	// 				Type:    "String",
 	// 				NonNull: true,
-	// 				Index:   "term",
+	// 				Indexes:   gql.NewIndexes("term"),
 	// 			},
 	// 			"role": {
 	// 				Name:    "role",
@@ -182,7 +182,7 @@ func TestAddTypeWithMultipleInterfaces(t *testing.T) {
 					Name:    "assignee",
 					Type:    "String",
 					NonNull: true,
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 				},
 			},
 		},
@@ -229,7 +229,7 @@ func TestUpdateType(t *testing.T) {
 				"name": {
 					Name:    "name",
 					Type:    "String",
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 					NonNull: false,
 				},
 				"picks": {
@@ -315,7 +315,7 @@ func TestUpdateField(t *testing.T) {
 				"name": {
 					Name:    "name",
 					Type:    "String",
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 					NonNull: true,
 				},
 				"picks": {
@@ -373,7 +373,7 @@ func TestUpdateField(t *testing.T) {
 	updateField := &gql.SimplifiedField{
 		Name:    "name",
 		Type:    "String",
-		Index:   "term",
+		Indexes: gql.NewIndexes("term"),
 		NonNull: false,
 	}
 	updated, err = schema.UpdateField("Person", updateField)
@@ -436,7 +436,7 @@ func TestUpdateEdge(t *testing.T) {
 				"name": {
 					Name:    "name",
 					Type:    "String",
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 					NonNull: true,
 				},
 				"picks": {
@@ -528,7 +528,7 @@ func TestUpdateEdgeShouldFailForInvalidTypeChange(t *testing.T) {
 				"name": {
 					Name:    "name",
 					Type:    "String",
-					Index:   "term",
+					Indexes: gql.NewIndexes("term"),
 					NonNull: true,
 				},
 				"picks": {
@@ -579,13 +579,13 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 				"hash": {
 					Name:    "hash",
 					Type:    "String",
-					Index:   "exact",
+					Indexes: gql.NewIndexes("exact"),
 					NonNull: true,
 				},
 				"type": {
 					Name:    "type",
 					Type:    "String",
-					Index:   "exact",
+					Indexes: gql.NewIndexes("exact"),
 					NonNull: true,
 				},
 			},
@@ -597,9 +597,9 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 			Name: "Person",
 			Fields: map[string]*gql.SimplifiedField{
 				"name": {
-					Name:  "name",
-					Type:  "String",
-					Index: "term",
+					Name:    "name",
+					Type:    "String",
+					Indexes: gql.NewIndexes("term"),
 				},
 				"picks": {
 					Name:    "picks",
@@ -624,7 +624,7 @@ func TestUpdateTypeShouldFailForInvalidUpdate(t *testing.T) {
 	roleType.Fields["name"] = &gql.SimplifiedField{
 		Name:    "name",
 		Type:    "String",
-		Index:   "term",
+		Indexes: gql.NewIndexes("term"),
 		NonNull: true,
 	}
 
@@ -713,17 +713,39 @@ func GetVotableInterface() *gql.SimplifiedInterface {
 		"Votable",
 		map[string]*gql.SimplifiedField{
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"details_description_s": {
-				Name:  "details_description_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_description_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		[]string{},
 		nil,
 	)
 }
+
+// func TestMultipleIndexesSchema(t *testing.T) {
+// 	// schemaDef := "type Person { name: String }"
+// 	schemaDef :=
+// 		`
+// 			type Role  {
+// 				docId: String! @id @search(by: [exact])
+// 				type: String! @search(by: [exact])
+// 				creator: String! @search(by: [exact, regexp])
+// 			}
+// 		`
+// 	schema, err := gql.NewSchema(schemaDef, true)
+// 	assert.NilError(t, err)
+// 	// fmt.Println("D Schema: ", schema.String())
+// 	err = admin.UpdateSchema(schema)
+// 	assert.NilError(t, err)
+// 	currentSchema, err := admin.GetCurrentSchema()
+// 	assert.NilError(t, err)
+// 	fmt.Println("Schema: ", currentSchema)
+// 	fmt.Println(gql.DefinitionToString(currentSchema.GetType("Document"), 0))
+// 	fmt.Println(gql.DefinitionToString(currentSchema.GetType("Role"), 0))
+// }

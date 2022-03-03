@@ -14,14 +14,14 @@ func TestApplyInterfacesNoApplicableInterface(t *testing.T) {
 		"Dho",
 		map[string]*gql.SimplifiedField{
 			"details_dho_n": {
-				Name:  "details_dho_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_dho_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_description_s": {
-				Name:  "details_description_s",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "details_description_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -35,14 +35,14 @@ func TestApplyInterfacesNoApplicableInterface(t *testing.T) {
 			Name: "Dho",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_dho_n": {
-					Name:  "details_dho_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_dho_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -57,19 +57,19 @@ func TestApplyInterfacesSingleSignatureField(t *testing.T) {
 		"Member",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_profile_c": {
-				Name:  "details_profile_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "details_profile_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"memberName": {
-				Name:  "memberName",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "memberName",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -83,23 +83,23 @@ func TestApplyInterfacesSingleSignatureField(t *testing.T) {
 			Name: "Member",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_account_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -115,9 +115,9 @@ func TestApplyInterfacesTypeReferencingInterface(t *testing.T) {
 		"Task",
 		map[string]*gql.SimplifiedField{
 			"details_task_s": {
-				Name:  "details_task_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_task_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		nil,
@@ -131,9 +131,9 @@ func TestApplyInterfacesTypeReferencingInterface(t *testing.T) {
 			Name: "Task",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_task_s": {
-					Name:  "details_task_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_task_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"user": {
 					Name:    "user",
@@ -154,19 +154,19 @@ func TestApplyInterfacesMultipleSignatureFields(t *testing.T) {
 		"BadgeProposal",
 		map[string]*gql.SimplifiedField{
 			"details_badge_n": {
-				Name:  "details_badge_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_badge_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"votetally": {
 				Name:    "votetally",
@@ -185,26 +185,26 @@ func TestApplyInterfacesMultipleSignatureFields(t *testing.T) {
 			Name: "BadgeProposal",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_badge_n": {
-					Name:  "details_badge_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_badge_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"system_hash_c": {
-					Name:  "system_hash_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "system_hash_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -230,9 +230,9 @@ func TestApplyInterfacesByType(t *testing.T) {
 		"ProPaper",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -246,14 +246,14 @@ func TestApplyInterfacesByType(t *testing.T) {
 			Name: "ProPaper",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_account_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_version_s": {
-					Name:  "details_version_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_version_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -266,9 +266,9 @@ func TestApplyInterfacesByType(t *testing.T) {
 		"Exam",
 		map[string]*gql.SimplifiedField{
 			"details_version_s": {
-				Name:  "details_version_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_version_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		nil,
@@ -282,9 +282,9 @@ func TestApplyInterfacesByType(t *testing.T) {
 			Name: "Exam",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_version_s": {
-					Name:  "details_version_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_version_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -300,14 +300,14 @@ func TestApplyInterfacesByTypeWithSignatureFields(t *testing.T) {
 		"Admin",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_profile_c": {
-				Name:  "details_profile_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "details_profile_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -321,23 +321,23 @@ func TestApplyInterfacesByTypeWithSignatureFields(t *testing.T) {
 			Name: "Admin",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_account_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -353,24 +353,24 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"system_hash_c": {
-				Name:  "system_hash_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "system_hash_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"votetally": {
 				Name:    "votetally",
@@ -378,9 +378,9 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 				IsArray: true,
 			},
 			"memberName": {
-				Name:  "memberName",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "memberName",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_profile_c_edge": {
 				Name: "details_profile_c_edge",
@@ -398,26 +398,26 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 			Name: "MemberProposal",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_account_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"system_hash_c": {
-					Name:  "system_hash_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "system_hash_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -430,18 +430,18 @@ func TestApplyInterfacesMultipleInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -458,9 +458,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		nil,
@@ -470,9 +470,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"memberName": {
-				Name:  "memberName",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "memberName",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_profile_c_edge": {
 				Name: "details_profile_c_edge",
@@ -494,9 +494,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -508,9 +508,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 		"ProPaper",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -520,9 +520,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 		"ProPaper",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_account_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		nil,
@@ -536,9 +536,9 @@ func TestApplyInterfacesShouldNoBeAbleToAddInterfaceToOldType(t *testing.T) {
 			Name: "ProPaper",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_account_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -555,9 +555,9 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		interfaces["Votable"],
@@ -567,19 +567,19 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_badge_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_badge_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"system_hash_c": {
-				Name:  "system_hash_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "system_hash_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"votetally": {
 				Name:    "votetally",
@@ -587,9 +587,9 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 				IsArray: true,
 			},
 			"memberName": {
-				Name:  "memberName",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "memberName",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_profile_c_edge": {
 				Name: "details_profile_c_edge",
@@ -607,26 +607,26 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 			Name: "MemberProposal",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_account_n": {
-					Name:  "details_badge_n",
-					Type:  "String",
-					Index: "exact",
+					Name:    "details_badge_n",
+					Type:    "String",
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"system_hash_c": {
-					Name:  "system_hash_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "system_hash_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -643,9 +643,9 @@ func TestApplyInterfacesForExistingTypeShouldIgnoreAnyNewApplicableInterface(t *
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			WithSubscription: true,
@@ -662,9 +662,9 @@ func TestApplyInterfacesShouldFailForAddingIDFieldToOldType(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_badge_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_badge_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		interfaces["Votable"],
@@ -674,14 +674,14 @@ func TestApplyInterfacesShouldFailForAddingIDFieldToOldType(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"details_account_n": {
-				Name:  "details_badge_n",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_badge_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"system_hash_c": {
-				Name:  "system_hash_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "system_hash_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"votetally": {
 				Name:    "votetally",
@@ -703,14 +703,14 @@ func TestApplyInterfacesShouldFailForIncompatibleTypes(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"vote": {
 				Name:    "vote",
@@ -733,14 +733,14 @@ func TestApplyInterfacesShouldFailForIncompatibleTypes(t *testing.T) {
 		"MemberProposal",
 		map[string]*gql.SimplifiedField{
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"details_title_s": {
-				Name:  "details_title_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_title_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"vote": {
 				Name: "vote",
@@ -798,21 +798,21 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			"Votable",
 			map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"system_hash_c": {
-					Name:  "system_hash_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "system_hash_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -836,18 +836,18 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			"User",
 			map[string]*gql.SimplifiedField{
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 			},
 			[]string{
@@ -862,9 +862,9 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			"Taskable",
 			map[string]*gql.SimplifiedField{
 				"details_task_s": {
-					Name:  "details_task_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_task_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"user": {
 					Name:    "user",
@@ -882,9 +882,9 @@ func getMockInterfaces() gql.SimplifiedInterfaces {
 			"Editable",
 			map[string]*gql.SimplifiedField{
 				"details_version_s": {
-					Name:  "details_version_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_version_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			nil,

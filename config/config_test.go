@@ -47,26 +47,26 @@ func TestLoadInterfaces(t *testing.T) {
 			"Votable",
 			map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"system_hash_c": {
-					Name:  "system_hash_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "system_hash_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -89,18 +89,18 @@ func TestLoadInterfaces(t *testing.T) {
 			"User",
 			map[string]*gql.SimplifiedField{
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_profile_c_edge": {
 					Name: "details_profile_c_edge",
 					Type: "ProfileData",
 				},
 				"memberName": {
-					Name:  "memberName",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "memberName",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact", "regexp"),
 				},
 			},
 			[]string{
@@ -117,9 +117,9 @@ func TestLoadInterfaces(t *testing.T) {
 			"Editable",
 			map[string]*gql.SimplifiedField{
 				"details_version_s": {
-					Name:  "details_version_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_version_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			nil,

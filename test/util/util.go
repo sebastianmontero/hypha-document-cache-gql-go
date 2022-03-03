@@ -88,7 +88,7 @@ func AssertSimplifiedField(t *testing.T, actual, expected *gql.SimplifiedField) 
 	assert.Equal(t, actual.IsID, expected.IsID)
 	assert.Equal(t, actual.Name, expected.Name)
 	assert.Equal(t, actual.NonNull, expected.NonNull)
-	assert.Equal(t, actual.Index, expected.Index)
+	assert.DeepEqual(t, actual.Indexes, expected.Indexes)
 	assert.Equal(t, actual.IsArray, expected.IsArray)
 	assert.Equal(t, actual.Type, expected.Type)
 }
@@ -157,16 +157,20 @@ func AssertField(t *testing.T, expected *gql.SimplifiedField, actual *ast.FieldD
 	} else {
 		assert.Assert(t, directive == nil)
 	}
-	if expected.Index != "" {
+	if expected.Indexes.HasIndexes() {
 		directive = actual.Directives.ForName("search")
 		assert.Assert(t, directive != nil)
 		argument := directive.Arguments.ForName("by")
 		assert.Assert(t, directive != nil)
 		assert.Equal(t, ast.ListValue, argument.Value.Kind)
-		value := argument.Value.Children[0].Value
-		assert.Assert(t, value != nil)
-		assert.Equal(t, expected.Index, value.Raw)
-		assert.Equal(t, ast.EnumValue, value.Kind)
+		assert.Equal(t, expected.Indexes.Len(), len(argument.Value.Children))
+		for _, child := range argument.Value.Children {
+			value := child.Value
+			assert.Assert(t, value != nil)
+			assert.Assert(t, expected.Indexes.Has(value.Raw))
+			assert.Equal(t, ast.EnumValue, value.Kind)
+		}
+
 	} else {
 		directive := actual.Directives.ForName("search")
 		assert.Assert(t, directive == nil)

@@ -31,13 +31,13 @@ var ContentTypeGQLTypeMap = map[string]string{
 	ContentType_String:      gql.GQLType_String,
 }
 
-var ContentTypeIndexMap = map[string]string{
-	ContentType_Asset:       "term",
-	ContentType_Checksum256: "exact",
-	ContentType_Int64:       "int64",
-	ContentType_Name:        "regexp",
-	ContentType_Time:        "hour",
-	ContentType_String:      "regexp",
+var ContentTypeIndexMap = map[string][]string{
+	ContentType_Asset:       {"term"},
+	ContentType_Checksum256: {"exact"},
+	ContentType_Int64:       {"int64"},
+	ContentType_Name:        {"exact", "regexp"},
+	ContentType_Time:        {"hour"},
+	ContentType_String:      {"regexp"},
 }
 
 var ContentTypeSuffixMap = map[string]string{
@@ -157,9 +157,9 @@ func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDo
 			if content.Label != CGL_ContentGroup {
 				name := GetFieldName(prefix, content.Label, content.GetType())
 				fields[name] = &gql.SimplifiedField{
-					Name:  name,
-					Type:  content.GetGQLType(),
-					Index: GetIndex(content.GetType()),
+					Name:    name,
+					Type:    content.GetGQLType(),
+					Indexes: GetIndexes(content.GetType()),
 				}
 				if content.IsChecksum() {
 					checksumFields = append(checksumFields, name)
@@ -214,8 +214,8 @@ func GetGQLType(typeName string) string {
 	return ContentTypeGQLTypeMap[typeName]
 }
 
-func GetIndex(typeName string) string {
-	return ContentTypeIndexMap[typeName]
+func GetIndexes(typeName string) gql.Indexes {
+	return gql.NewIndexes(ContentTypeIndexMap[typeName]...)
 }
 
 func IsBaseType(typeName string) bool {

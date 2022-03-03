@@ -24,7 +24,7 @@ func TestAdd(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -71,7 +71,7 @@ func TestAdd(t *testing.T) {
 				Name:    "name",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"assignments": gql.NewEdgeField("assignments", "Assignment"),
 		},
@@ -130,7 +130,7 @@ func TestAddMultipleIDs(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -193,15 +193,15 @@ func TestUpdateFieldToBeID(t *testing.T) {
 		"Assignment",
 		map[string]*gql.SimplifiedField{
 			"name": {
-				Name:  "name",
-				Type:  "String",
-				Index: "term",
+				Name:    "name",
+				Type:    "String",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"assignee": {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -256,7 +256,7 @@ func TestUpdateFieldToBeID(t *testing.T) {
 		Type:    "String",
 		IsID:    true,
 		NonNull: true,
-		Index:   "term",
+		Indexes: gql.NewIndexes("term"),
 	}
 
 	updateOp, err = schema.UpdateType(assignmentType)
@@ -299,7 +299,7 @@ func TestUpdate(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -373,7 +373,7 @@ func TestUpdate(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"periods": {
 				Name: "periods",
@@ -429,7 +429,7 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -445,7 +445,7 @@ func TestUpdateSetAddingDeletingEdge(t *testing.T) {
 				Name:    "name",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -603,7 +603,7 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -619,7 +619,7 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 				Name:    "name",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -632,7 +632,7 @@ func TestUpdateEdgeToMoreGenericType(t *testing.T) {
 				Name:    "name",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -835,7 +835,7 @@ func TestDelete(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",
@@ -896,7 +896,7 @@ func TestMultipleMutations(t *testing.T) {
 				Name:    "assignee",
 				Type:    "String",
 				NonNull: true,
-				Index:   "term",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"votes": {
 				Name: "votes",

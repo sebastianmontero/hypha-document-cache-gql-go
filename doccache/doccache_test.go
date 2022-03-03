@@ -1,6 +1,7 @@
 package doccache_test
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -27,9 +28,9 @@ var userType = gql.NewSimplifiedType(
 	"User",
 	map[string]*gql.SimplifiedField{
 		"details_account_n": {
-			Name:  "details_account_n",
-			Type:  "String",
-			Index: "regexp",
+			Name:    "details_account_n",
+			Type:    "String",
+			Indexes: gql.NewIndexes("exact", "regexp"),
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -39,9 +40,9 @@ var memberType = gql.NewSimplifiedType(
 	"Member",
 	map[string]*gql.SimplifiedField{
 		"details_account_n": {
-			Name:  "details_account_n",
-			Type:  "String",
-			Index: "regexp",
+			Name:    "details_account_n",
+			Type:    "String",
+			Indexes: gql.NewIndexes("exact", "regexp"),
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -51,9 +52,9 @@ var periodType = gql.NewSimplifiedType(
 	"Period",
 	map[string]*gql.SimplifiedField{
 		"details_number_i": {
-			Name:  "details_number_i",
-			Type:  "Int64",
-			Index: "int64",
+			Name:    "details_number_i",
+			Type:    "Int64",
+			Indexes: gql.NewIndexes("int64"),
 		},
 	},
 	gql.DocumentSimplifiedInterface,
@@ -114,6 +115,259 @@ func TestReloadSchema(t *testing.T) {
 func TestDoccacheConfigIsProperlyConfiguredForNoElasticEndpoint(t *testing.T) {
 	setUp("./config-no-elastic-endpoint.yml")
 	assertDoccacheConfig(t, cache, cfg)
+}
+func TestNameFieldIndexesUpdateFromExistingSchema(t *testing.T) {
+	setUp("./config-no-special-config.yml")
+
+	t.Logf("Creating schema with documents with name fields only having regex index")
+
+	dhoId := "2"
+	dhoType := gql.NewSimplifiedType(
+		"Dho",
+		map[string]*gql.SimplifiedField{
+			"details_rootNode_n": {
+				Name:    "details_rootNode_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("regexp"),
+			},
+			"details_hvoiceSalaryPerPhase_a": {
+				Name:    "details_hvoiceSalaryPerPhase_a",
+				Type:    "String",
+				Indexes: gql.NewIndexes("term"),
+			},
+			"details_timeShareX100_i": {
+				Name:    "details_timeShareX100_i",
+				Type:    "Int64",
+				Indexes: gql.NewIndexes("int64"),
+			},
+			"details_strToInt_s": {
+				Name:    "details_strToInt_s",
+				Type:    "String",
+				Indexes: gql.NewIndexes("regexp"),
+			},
+			"system_originalApprovedDate_t": {
+				Name:    "system_originalApprovedDate_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
+			},
+		},
+		gql.DocumentSimplifiedInterface,
+	)
+	dhoInstance := gql.NewSimplifiedInstance(
+		dhoType,
+		map[string]interface{}{
+			"docId":                          dhoId,
+			"createdDate":                    "2020-11-12T18:27:47.000Z",
+			"updatedDate":                    "2020-11-12T18:27:47.000Z",
+			"creator":                        "dao.hypha",
+			"contract":                       "contract1",
+			"type":                           "Dho",
+			"details_rootNode_n":             "dao.hypha2",
+			"details_hvoiceSalaryPerPhase_a": "4133.04 HVOICE",
+			"details_timeShareX100_i":        int64(60),
+			"details_strToInt_s":             "60",
+			"system_originalApprovedDate_t":  "2021-04-12T05:09:36.5Z",
+		},
+	)
+
+	updateOp, err := cache.Schema.UpdateType(dhoType)
+	assert.NilError(t, err)
+	assert.Equal(t, updateOp, gql.SchemaUpdateOp_Created)
+	// fmt.Println("Schema: ", schema.String())
+
+	err = admin.UpdateSchema(cache.Schema)
+	assert.NilError(t, err)
+	numDocs := 500000
+	fmt.Println("Inserting documents to test indexing speed: ", numDocs, time.Now())
+	t.Logf("Inserting %v documents to test indexing speed", numDocs)
+	for i := 0; i < numDocs; i++ {
+		dhoInstance.Values["docId"] = fmt.Sprintf("%v", i)
+		dhoInstance.SetValue("details_rootNode_n", fmt.Sprintf("dao.hypha%v", i))
+		err = client.Mutate(dhoInstance.AddMutation(false))
+		assert.NilError(t, err)
+	}
+
+	cache2, err := doccache.New(dg, admin, client, cfg, nil)
+	if err != nil {
+		log.Fatal(err, "Failed creating DocCache")
+	}
+
+	cache = cache2
+	assertInstance(t, dhoInstance)
+
+	fmt.Println("Updating document with name fields having both exact and regex indexes", time.Now())
+	t.Logf("Updating document with name fields having both exact and regex indexes")
+	dhoIdI, _ := strconv.ParseUint(dhoId, 10, 64)
+	dhoDoc := &domain.ChainDocument{
+		ID:          dhoIdI,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"60",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-04-12T05:09:36.5",
+					},
+				},
+			},
+		},
+	}
+
+	dhoType.Fields["details_rootNode_n"].Indexes = gql.NewIndexes("exact", "regexp")
+	dhoInstance.SetValue("docId", dhoId)
+	dhoInstance.SetValue("details_rootNode_n", "dao.hypha")
+	cursor := "cursor1"
+	err = cache.StoreDocument(dhoDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, dhoInstance)
+	assertCursor(t, cursor)
+
+	fmt.Println("Adding field to dho document to cause another schema update after adding index", time.Now())
+	t.Logf("Adding field to dho document to cause another schema update after adding index")
+	dhoId = "3"
+	dhoIdI, _ = strconv.ParseUint(dhoId, 10, 64)
+	dhoDoc = &domain.ChainDocument{
+		ID:          dhoIdI,
+		CreatedDate: "2020-11-12T18:27:47.000",
+		Creator:     "dao.hypha",
+		Contract:    "contract1",
+		ContentGroups: [][]*domain.ChainContent{
+			{
+				{
+					Label: "root_node",
+					Value: []interface{}{
+						"name",
+						"dao.hypha",
+					},
+				},
+				{
+					Label: "admin",
+					Value: []interface{}{
+						"name",
+						"dao.admin",
+					},
+				},
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"string",
+						"details",
+					},
+				},
+				{
+					Label: "hvoice_salary_per_phase",
+					Value: []interface{}{
+						"asset",
+						"4133.04 HVOICE",
+					},
+				},
+				{
+					Label: "time_share_x100",
+					Value: []interface{}{
+						"int64",
+						"60",
+					},
+				},
+				{
+					Label: "str_to_int",
+					Value: []interface{}{
+						"string",
+						"60",
+					},
+				},
+			},
+			{
+				{
+					Label: "content_group_label",
+					Value: []interface{}{
+						"name",
+						"system",
+					},
+				},
+				{
+					Label: "type",
+					Value: []interface{}{
+						"name",
+						"dho",
+					},
+				},
+				{
+					Label: "original_approved_date",
+					Value: []interface{}{
+						"time_point",
+						"2021-04-12T05:09:36.5",
+					},
+				},
+			},
+		},
+	}
+	dhoType.SetField("details_admin_n", &gql.SimplifiedField{
+		Name:    "details_admin_n",
+		Type:    "String",
+		Indexes: gql.NewIndexes("exact", "regexp"),
+	})
+	dhoInstance.SetValue("docId", dhoId)
+	dhoInstance.SetValue("details_admin_n", "dao.admin")
+	cursor = "cursor2"
+	err = cache.StoreDocument(dhoDoc, cursor)
+	assert.NilError(t, err)
+	assertInstance(t, dhoInstance)
+	assertCursor(t, cursor)
+
 }
 
 func TestOpCycle(t *testing.T) {
@@ -216,34 +470,34 @@ func TestOpCycle(t *testing.T) {
 		"Dho",
 		map[string]*gql.SimplifiedField{
 			"details_rootNode_n": {
-				Name:  "details_rootNode_n",
-				Type:  "String",
-				Index: "regexp",
+				Name:    "details_rootNode_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact", "regexp"),
 			},
 			"details_hvoiceSalaryPerPhase_a": {
-				Name:  "details_hvoiceSalaryPerPhase_a",
-				Type:  "String",
-				Index: "term",
+				Name:    "details_hvoiceSalaryPerPhase_a",
+				Type:    "String",
+				Indexes: gql.NewIndexes("term"),
 			},
 			"details_timeShareX100_i": {
-				Name:  "details_timeShareX100_i",
-				Type:  "Int64",
-				Index: "int64",
+				Name:    "details_timeShareX100_i",
+				Type:    "Int64",
+				Indexes: gql.NewIndexes("int64"),
 			},
 			"details_strToInt_s": {
-				Name:  "details_strToInt_s",
-				Type:  "String",
-				Index: "regexp",
+				Name:    "details_strToInt_s",
+				Type:    "String",
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"details_startPeriod_c": {
-				Name:  "details_startPeriod_c",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_startPeriod_c",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"system_originalApprovedDate_t": {
-				Name:  "system_originalApprovedDate_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "system_originalApprovedDate_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -460,25 +714,25 @@ func TestOpCycle(t *testing.T) {
 	expectedDhoType.SetField(
 		"details_strToInt_i",
 		&gql.SimplifiedField{
-			Name:  "details_strToInt_i",
-			Type:  "Int64",
-			Index: "int64",
+			Name:    "details_strToInt_i",
+			Type:    "Int64",
+			Indexes: gql.NewIndexes("int64"),
 		},
 	)
 	expectedDhoType.SetField(
 		"details_periodCount_i",
 		&gql.SimplifiedField{
-			Name:  "details_periodCount_i",
-			Type:  "Int64",
-			Index: "int64",
+			Name:    "details_periodCount_i",
+			Type:    "Int64",
+			Indexes: gql.NewIndexes("int64"),
 		},
 	)
 	expectedDhoType.SetField(
 		"system_endPeriod_c",
 		&gql.SimplifiedField{
-			Name:  "system_endPeriod_c",
-			Type:  "String",
-			Index: "exact",
+			Name:    "system_endPeriod_c",
+			Type:    "String",
+			Indexes: gql.NewIndexes("exact"),
 		},
 	)
 	expectedDHOInstance.SetValue("updatedDate", "2020-11-12T20:27:47.000Z")
@@ -811,14 +1065,14 @@ func TestDocumentCreationDeduceType(t *testing.T) {
 			"VoteTally",
 			map[string]*gql.SimplifiedField{
 				"pass_votePower_a": {
-					Name:  "pass_votePower_a",
-					Type:  "String",
-					Index: "term",
+					Name:    "pass_votePower_a",
+					Type:    "String",
+					Indexes: gql.NewIndexes("term"),
 				},
 				"fail_votePower_a": {
-					Name:  "fail_votePower_a",
-					Type:  "String",
-					Index: "term",
+					Name:    "fail_votePower_a",
+					Type:    "String",
+					Indexes: gql.NewIndexes("term"),
 				},
 			},
 			gql.DocumentSimplifiedInterface,
@@ -907,9 +1161,9 @@ func TestMissingCoreEdge(t *testing.T) {
 		"Assignment",
 		map[string]*gql.SimplifiedField{
 			"details_startPeriod_c": {
-				Name:  "details_startPeriod_c",
-				Type:  "String",
-				Index: "exact",
+				Name:    "details_startPeriod_c",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -1112,14 +1366,14 @@ func TestLogicalIds(t *testing.T) {
 			"details_rootNode_n": {
 				Name:    "details_rootNode_n",
 				Type:    "String",
-				Index:   "regexp",
+				Indexes: gql.NewIndexes("exact", "regexp"),
 				IsID:    true,
 				NonNull: true,
 			},
 			"details_hvoiceSalaryPerPhase_a": {
-				Name:  "details_hvoiceSalaryPerPhase_a",
-				Type:  "String",
-				Index: "term",
+				Name:    "details_hvoiceSalaryPerPhase_a",
+				Type:    "String",
+				Indexes: gql.NewIndexes("term"),
 			},
 		},
 		gql.DocumentSimplifiedInterface,
@@ -1268,14 +1522,14 @@ func TestLogicalIds(t *testing.T) {
 		"Member",
 		map[string]*gql.SimplifiedField{
 			"details_rootNode_n": {
-				Name:  "details_rootNode_n",
-				Type:  "String",
-				Index: "regexp",
+				Name:    "details_rootNode_n",
+				Type:    "String",
+				Indexes: gql.NewIndexes("exact", "regexp"),
 			},
 			"details_member_n": {
 				Name:    "details_member_n",
 				Type:    "String",
-				Index:   "regexp",
+				Indexes: gql.NewIndexes("exact", "regexp"),
 				IsID:    true,
 				NonNull: true,
 			},
@@ -1388,21 +1642,21 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		"Votable",
 		map[string]*gql.SimplifiedField{
 			"ballot_expiration_t": {
-				Name:  "ballot_expiration_t",
-				Type:  gql.GQLType_Time,
-				Index: "hour",
+				Name:    "ballot_expiration_t",
+				Type:    gql.GQLType_Time,
+				Indexes: gql.NewIndexes("hour"),
 			},
 			"details_title_s": {
 				Name:    "details_title_s",
 				Type:    gql.GQLType_String,
-				Index:   "regexp",
+				Indexes: gql.NewIndexes("regexp"),
 				IsID:    true,
 				NonNull: true,
 			},
 			"details_description_s": {
-				Name:  "details_description_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_description_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"vote": {
 				Name:    "vote",
@@ -1439,14 +1693,14 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		"User",
 		map[string]*gql.SimplifiedField{
 			"details_profile_c": {
-				Name:  "details_profile_c",
-				Type:  gql.GQLType_String,
-				Index: "exact",
+				Name:    "details_profile_c",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("exact"),
 			},
 			"details_account_n": {
-				Name:  "details_account_n",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_account_n",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		[]string{
@@ -1462,9 +1716,9 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		"Extendable",
 		map[string]*gql.SimplifiedField{
 			"details_extensionName_s": {
-				Name:  "details_extensionName_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_extensionName_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"extension": {
 				Name:    "extension",
@@ -1484,9 +1738,9 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		"Taskable",
 		map[string]*gql.SimplifiedField{
 			"details_task_s": {
-				Name:  "details_task_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_task_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 			"user": {
 				Name:    "user",
@@ -1506,9 +1760,9 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 		"Editable",
 		map[string]*gql.SimplifiedField{
 			"details_version_s": {
-				Name:  "details_version_s",
-				Type:  gql.GQLType_String,
-				Index: "regexp",
+				Name:    "details_version_s",
+				Type:    gql.GQLType_String,
+				Indexes: gql.NewIndexes("regexp"),
 			},
 		},
 		[]string{},
@@ -1590,21 +1844,21 @@ func TestCustomInterfaces(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -1700,26 +1954,26 @@ func TestCustomInterfaces(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_startedAt_t": {
-					Name:  "details_startedAt_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "details_startedAt_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -1810,9 +2064,9 @@ func TestCustomInterfaces(t *testing.T) {
 			Name: "ProfileData",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_name_s": {
-					Name:  "details_name_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_name_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -1901,26 +2155,26 @@ func TestCustomInterfaces(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_startedAt_t": {
-					Name:  "details_startedAt_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "details_startedAt_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -1933,14 +2187,14 @@ func TestCustomInterfaces(t *testing.T) {
 					IsArray: true,
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_account_n",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact", "regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2022,9 +2276,9 @@ func TestCustomInterfaces(t *testing.T) {
 			Name: "Vote",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_result_s": {
-					Name:  "details_result_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_result_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2133,26 +2387,26 @@ func TestCustomInterfacesAddByType(t *testing.T) {
 			Name: "Assignbadge",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"ballot_votes_i": {
-					Name:  "ballot_votes_i",
-					Type:  gql.GQLType_Int64,
-					Index: "int64",
+					Name:    "ballot_votes_i",
+					Type:    gql.GQLType_Int64,
+					Indexes: gql.NewIndexes("int64"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -2264,31 +2518,31 @@ func TestCustomInterfacesAddMultipleByType(t *testing.T) {
 			Name: "Payout",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"ballot_votes_i": {
-					Name:  "ballot_votes_i",
-					Type:  gql.GQLType_Int64,
-					Index: "int64",
+					Name:    "ballot_votes_i",
+					Type:    gql.GQLType_Int64,
+					Indexes: gql.NewIndexes("int64"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"details_version_s": {
-					Name:  "details_version_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_version_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -2386,9 +2640,9 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 			Name: "ProfileData",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_name_s": {
-					Name:  "details_name_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_name_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2493,26 +2747,26 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 			Name: "Assignbadge",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"ballot_votes_i": {
-					Name:  "ballot_votes_i",
-					Type:  gql.GQLType_Int64,
-					Index: "int64",
+					Name:    "ballot_votes_i",
+					Type:    gql.GQLType_Int64,
+					Indexes: gql.NewIndexes("int64"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -2525,15 +2779,15 @@ func TestCustomInterfacesAddSignatureAndTypeBased(t *testing.T) {
 					IsArray: true,
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_account_n",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact", "regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2622,9 +2876,9 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 			Name: "ProfileData",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_name_s": {
-					Name:  "details_name_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_name_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2736,26 +2990,26 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"ballot_votes_i": {
-					Name:  "ballot_votes_i",
-					Type:  gql.GQLType_Int64,
-					Index: "int64",
+					Name:    "ballot_votes_i",
+					Type:    gql.GQLType_Int64,
+					Indexes: gql.NewIndexes("int64"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -2768,14 +3022,14 @@ func TestCustomInterfacesAddMultipleAtTheSameTime(t *testing.T) {
 					IsArray: true,
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_account_n",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact", "regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2863,9 +3117,9 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 			Name: "ProfileData",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_name_s": {
-					Name:  "details_name_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_name_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -2954,19 +3208,19 @@ func TestCustomInterfacesWithCoreEdge(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_title_s": {
-					Name:  "details_title_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"details_profile_c": {
-					Name:  "details_profile_c",
-					Type:  gql.GQLType_String,
-					Index: "exact",
+					Name:    "details_profile_c",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact"),
 				},
 				"details_account_n": {
-					Name:  "details_account_n",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_account_n",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("exact", "regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -3055,14 +3309,14 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_title_s": {
-					Name:  "details_title_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_title_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"details_extensionName_s": {
-					Name:  "details_extensionName_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_extensionName_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"extension": {
 					Name:    "extension",
@@ -3144,9 +3398,9 @@ func TestCustomInterfacesEdgeIsGeneralizedToDocument(t *testing.T) {
 			Name: "Vote",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_result_s": {
-					Name:  "details_result_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_result_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,
@@ -3402,21 +3656,21 @@ func TestCustomInterfacesShouldFailForTypeThatImplementsInterfaceNotHavingIDFiel
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -3576,21 +3830,21 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 			Name: "AssigProp",
 			Fields: map[string]*gql.SimplifiedField{
 				"ballot_expiration_t": {
-					Name:  "ballot_expiration_t",
-					Type:  gql.GQLType_Time,
-					Index: "hour",
+					Name:    "ballot_expiration_t",
+					Type:    gql.GQLType_Time,
+					Indexes: gql.NewIndexes("hour"),
 				},
 				"details_title_s": {
 					Name:    "details_title_s",
 					Type:    gql.GQLType_String,
-					Index:   "regexp",
+					Indexes: gql.NewIndexes("regexp"),
 					IsID:    true,
 					NonNull: true,
 				},
 				"details_description_s": {
-					Name:  "details_description_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_description_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 				"vote": {
 					Name:    "vote",
@@ -3679,9 +3933,9 @@ func TestCustomInterfacesShouldFailForAddingInvalidTypeEdge(t *testing.T) {
 			Name: "VoteOld",
 			Fields: map[string]*gql.SimplifiedField{
 				"details_result_s": {
-					Name:  "details_result_s",
-					Type:  gql.GQLType_String,
-					Index: "regexp",
+					Name:    "details_result_s",
+					Type:    gql.GQLType_String,
+					Indexes: gql.NewIndexes("regexp"),
 				},
 			},
 			WithSubscription: true,

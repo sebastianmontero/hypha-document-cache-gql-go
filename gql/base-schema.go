@@ -10,44 +10,44 @@ var DocumentFieldArgs = map[string]*SimplifiedField{
 		Name:    "docId",
 		Type:    "String",
 		NonNull: true,
-		Index:   "exact",
+		Indexes: NewIndexes("exact"),
 	},
 	"type": {
 		Name:    "type",
 		Type:    "String",
 		NonNull: true,
-		Index:   "exact",
+		Indexes: NewIndexes("exact"),
 	},
 	"creator": {
 		Name:    "creator",
 		Type:    "String",
 		NonNull: true,
-		Index:   "regexp",
+		Indexes: NewIndexes("exact", "regexp"),
 	},
 	"createdDate": {
 		Name:    "createdDate",
 		Type:    "DateTime",
 		NonNull: true,
-		Index:   "hour",
+		Indexes: NewIndexes("hour"),
 	},
 	"updatedDate": {
 		Name:    "updatedDate",
 		Type:    "DateTime",
 		NonNull: true,
-		Index:   "hour",
+		Indexes: NewIndexes("hour"),
 	},
 	"contract": {
 		Name:    "contract",
 		Type:    "String",
 		NonNull: true,
-		Index:   "exact",
+		Indexes: NewIndexes("exact"),
 	},
 }
 
 const DocumentFields = `
 		docId: String! @id @search(by: [exact])
 		type: String! @search(by: [exact])
-		creator: String! @search(by: [regexp])
+		creator: String! @search(by: [exact, regexp])
 		createdDate: DateTime! @search(by: [hour])
 		updatedDate: DateTime! @search(by: [hour])
 		contract: String! @search(by: [exact])
@@ -97,7 +97,7 @@ var CursorSimplifiedType = &SimplifiedType{
 				Name:    "id",
 				IsID:    true,
 				Type:    "String",
-				Index:   "exact",
+				Indexes: NewIndexes("exact"),
 				NonNull: true,
 			},
 			"cursor": {
@@ -117,7 +117,7 @@ var DoccacheConfigSimplifiedType = &SimplifiedType{
 				Name:    "id",
 				IsID:    true,
 				Type:    "String",
-				Index:   "exact",
+				Indexes: NewIndexes("exact"),
 				NonNull: true,
 			},
 			"contract": {

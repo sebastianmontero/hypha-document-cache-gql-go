@@ -247,22 +247,27 @@ func CreateField(field *SimplifiedField) *ast.FieldDefinition {
 			Name: "id",
 		})
 	}
-	if field.Index != "" {
+	if field.Indexes.HasIndexes() {
+		children := make(ast.ChildValueList, 0, field.Indexes.Len())
+		for index := range field.Indexes {
+			children = append(
+				children,
+				&ast.ChildValue{
+					Value: &ast.Value{
+						Raw:  index,
+						Kind: ast.EnumValue,
+					},
+				},
+			)
+		}
 		directives = append(directives, &ast.Directive{
 			Name: "search",
 			Arguments: ast.ArgumentList{
 				{
 					Name: "by",
 					Value: &ast.Value{
-						Kind: ast.ListValue,
-						Children: ast.ChildValueList{
-							{
-								Value: &ast.Value{
-									Raw:  field.Index,
-									Kind: ast.EnumValue,
-								},
-							},
-						},
+						Kind:     ast.ListValue,
+						Children: children,
 					},
 				},
 			},

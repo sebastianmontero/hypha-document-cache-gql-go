@@ -2,16 +2,68 @@ package gql
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/vektah/gqlparser/ast"
 )
+
+type Indexes map[string]bool
+
+func NewIndexes(indexes ...string) Indexes {
+	idxs := make(Indexes, len(indexes))
+	for _, index := range indexes {
+		idxs[index] = true
+	}
+	return idxs
+}
+
+func NewIndexesFromFieldDef(fieldDef *ast.FieldDefinition) (Indexes, error) {
+	directive := fieldDef.Directives.ForName("search")
+	if directive != nil {
+		argument := directive.Arguments.ForName("by")
+		if argument == nil {
+			return nil, fmt.Errorf("don't know how to parse index for type: %v", fieldDef.Name)
+		}
+		indexes := make(Indexes, len(argument.Value.Children))
+		for _, child := range argument.Value.Children {
+			indexes[child.Value.Raw] = true
+		}
+		return indexes, nil
+	}
+	return nil, nil
+}
+
+func (m Indexes) Has(index string) bool {
+	_, ok := m[index]
+	return ok
+}
+
+func (m Indexes) HasIndexes() bool {
+	return len(m) > 0
+}
+
+func (m Indexes) Len() int {
+	return len(m)
+}
+
+func (m Indexes) Equal(indexes Indexes) bool {
+	return reflect.DeepEqual(m, indexes)
+}
+
+func (m Indexes) Clone() Indexes {
+	idxs := make(Indexes, len(m))
+	for k, v := range m {
+		idxs[k] = v
+	}
+	return idxs
+}
 
 type SimplifiedField struct {
 	IsID    bool
 	Name    string
 	Type    string
 	NonNull bool
-	Index   string
+	Indexes Indexes
 	IsArray bool
 }
 
@@ -29,15 +81,11 @@ func NewSimplifiedField(fieldDef *ast.FieldDefinition) (*SimplifiedField, error)
 		field.IsArray = true
 	}
 
-	directive := fieldDef.Directives.ForName("search")
-	if directive != nil {
-		argument := directive.Arguments.ForName("by")
-		if argument == nil || len(argument.Value.Children) != 1 {
-			return nil, fmt.Errorf("don't know how to parse index for type: %v", field.Name)
-		}
-		field.Index = argument.Value.Children[0].Value.Raw
+	indexes, err := NewIndexesFromFieldDef(fieldDef)
+	if err != nil {
+		return nil, err
 	}
-
+	field.Indexes = indexes
 	return field, nil
 }
 
@@ -55,7 +103,7 @@ func (m *SimplifiedField) Clone() *SimplifiedField {
 		Name:    m.Name,
 		Type:    m.Type,
 		NonNull: m.NonNull,
-		Index:   m.Index,
+		Indexes: m.Indexes.Clone(),
 		IsArray: m.IsArray,
 	}
 }
@@ -73,7 +121,8 @@ func (m *SimplifiedField) IsEdge() bool {
 }
 
 func (m *SimplifiedField) equal(field *SimplifiedField) bool {
-	return *m == *field
+	return m.IsID == field.IsID && m.Name == field.Name && m.Type == field.Type &&
+		m.NonNull == field.NonNull && m.IsArray == field.IsArray && m.Indexes.Equal(field.Indexes)
 }
 
 func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
@@ -118,7 +167,7 @@ func (m *SimplifiedField) String() string {
 				Type: %v,
 				NonNull: %v,
 				IsArray: %v,
-				Index: %v,
+				Indexes: %v,
 			}		
 		`,
 		m.IsID,
@@ -126,6 +175,6 @@ func (m *SimplifiedField) String() string {
 		m.Type,
 		m.NonNull,
 		m.IsArray,
-		m.Index,
+		m.Indexes,
 	)
 }

@@ -112,7 +112,7 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 			signature, _ := fieldConfig["signature"].(bool)
 			var fullFieldName string
 			var gqlType string
-			var index string
+			var indexes gql.Indexes
 			isArray := false
 
 			if isID && !domain.IsIDableType(fieldType) {
@@ -142,12 +142,12 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 					)
 				}
 				gqlType = domain.GetGQLType(fieldType)
-				index = domain.GetIndex(fieldType)
+				indexes = domain.GetIndexes(fieldType)
 			} else {
 				if domain.IsBaseType(fieldType) {
 					fullFieldName = strcase.ToLowerCamel(fieldName)
 					gqlType = domain.GetGQLType(fieldType)
-					index = domain.GetIndex(fieldType)
+					indexes = domain.GetIndexes(fieldType)
 				} else {
 					fullFieldName = fieldName
 					gqlType = domain.GetObjectTypeName(fieldType)
@@ -158,7 +158,7 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 				IsID:    isID,
 				Name:    fullFieldName,
 				Type:    gqlType,
-				Index:   index,
+				Indexes: indexes,
 				IsArray: isArray,
 				NonNull: isID,
 			}
