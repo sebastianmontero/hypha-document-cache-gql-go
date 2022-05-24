@@ -729,6 +729,8 @@ github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20211031201606-2a159797
 github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20211031201606-2a159797d7a0/go.mod h1:5KkulgbSFOF8PuFo8wHEvo9eUzioTyJpWJsF6HEpKn8=
 github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f h1:YwCANvbgj0aP6eweFRe+48LL1nS4H46NchmIqo6uphM=
 github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f/go.mod h1:5KkulgbSFOF8PuFo8wHEvo9eUzioTyJpWJsF6HEpKn8=
+github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220521193606-1b5d285035af h1:iXTj7qL/gDJNrsrpHfvlxSU7HL4EAZkxk+fSAnzFa78=
+github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220521193606-1b5d285035af/go.mod h1:5KkulgbSFOF8PuFo8wHEvo9eUzioTyJpWJsF6HEpKn8=
 github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654 h1:VXSzZY1sZ0QLPvnnlgWC3tlprwAfyIrcThbN5dovNJI=
 github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654/go.mod h1:az53NkMof6OHCQWY7RncRAhuTQrONhoJIORx4OktGU0=
 github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74 h1:eNvvwYAh/JZX6pjCTjBqjxfZBuUtZnNjWkr0ew471x0=

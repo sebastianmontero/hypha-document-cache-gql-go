@@ -12,7 +12,7 @@ require (
 	github.com/matryer/is v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.2.1
 	github.com/rs/zerolog v1.20.0
-	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220225142541-74ad0609fc2f
+	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220521193606-1b5d285035af
 	github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654
 	github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74
 	github.com/spf13/viper v1.8.0
