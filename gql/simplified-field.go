@@ -7,6 +7,7 @@ import (
 	"github.com/vektah/gqlparser/ast"
 )
 
+// Provides the functionality for managing indexes
 type Indexes map[string]bool
 
 func NewIndexes(indexes ...string) Indexes {
@@ -17,6 +18,8 @@ func NewIndexes(indexes ...string) Indexes {
 	return idxs
 }
 
+// Examines the full field definition to determine the indexes
+// associated to it and creates a new indexes instance
 func NewIndexesFromFieldDef(fieldDef *ast.FieldDefinition) (Indexes, error) {
 	directive := fieldDef.Directives.ForName("search")
 	if directive != nil {
@@ -33,6 +36,7 @@ func NewIndexesFromFieldDef(fieldDef *ast.FieldDefinition) (Indexes, error) {
 	return nil, nil
 }
 
+// Returns whether it contains the specified index
 func (m Indexes) Has(index string) bool {
 	_, ok := m[index]
 	return ok
@@ -58,6 +62,8 @@ func (m Indexes) Clone() Indexes {
 	return idxs
 }
 
+// Stores the attributes associated to a field and provides
+// the functionality to manage them
 type SimplifiedField struct {
 	IsID    bool
 	Name    string
@@ -125,6 +131,7 @@ func (m *SimplifiedField) equal(field *SimplifiedField) bool {
 		m.NonNull == field.NonNull && m.IsArray == field.IsArray && m.Indexes.Equal(field.Indexes)
 }
 
+// Determines whether the current field can be updated to the provided field
 func (m *SimplifiedField) CheckUpdate(new *SimplifiedField) error {
 
 	// if new.IsID != m.IsID {

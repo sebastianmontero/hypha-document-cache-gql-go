@@ -9,7 +9,7 @@ type Cursors struct {
 	Cursors []*Cursor `json:"cursors,omitempty"`
 }
 
-//Cursor domain object
+//Represents the cursor as stored on the db, the cursor points to where we are on the delta stream
 type Cursor struct {
 	UID    string   `json:"uid,omitempty"`
 	Cursor string   `json:"cursor,omitempty"`

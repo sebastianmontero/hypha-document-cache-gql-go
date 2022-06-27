@@ -33,6 +33,7 @@ func (m *Mutation) String() string {
 	)
 }
 
+// Provides convinience methods for interacting with a graphql database
 type Client struct {
 	client *graphql.Client
 }

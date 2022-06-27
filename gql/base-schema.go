@@ -4,6 +4,10 @@ import (
 	"github.com/vektah/gqlparser/ast"
 )
 
+// Defines the structs that represent the objects that are part of the initial schema
+// of every document cache instance
+
+//The fields that are part of the document interface
 var DocumentFieldArgs = map[string]*SimplifiedField{
 	"docId": {
 		IsID:    true,
@@ -53,6 +57,7 @@ const DocumentFields = `
 		contract: String! @search(by: [exact])
 `
 
+// The base graphql schema
 const BaseSchema = `
 
 	interface Document @withSubscription {` +
@@ -81,6 +86,7 @@ const BaseSchema = `
 	
 `
 
+// The document interface type
 var DocumentSimplifiedInterface = &SimplifiedInterface{
 	SimplifiedBaseType: &SimplifiedBaseType{
 		Name:             "Document",
@@ -89,6 +95,7 @@ var DocumentSimplifiedInterface = &SimplifiedInterface{
 	},
 }
 
+// The cursor type
 var CursorSimplifiedType = &SimplifiedType{
 	SimplifiedBaseType: &SimplifiedBaseType{
 		Name: "Cursor",
@@ -109,6 +116,7 @@ var CursorSimplifiedType = &SimplifiedType{
 	},
 }
 
+// The document cache config type
 var DoccacheConfigSimplifiedType = &SimplifiedType{
 	SimplifiedBaseType: &SimplifiedBaseType{
 		Name: "DoccacheConfig",

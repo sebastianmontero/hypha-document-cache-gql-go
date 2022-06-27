@@ -9,7 +9,7 @@ import (
 	"github.com/iancoleman/strcase"
 )
 
-//ChainEdge domain object
+// Represents an on chain edge
 type ChainEdge struct {
 	Name        string `json:"edge_name,omitempty"`
 	From        string `json:"from_node,omitempty"`
@@ -48,6 +48,7 @@ func (m *ChainEdge) String() string {
 	return fmt.Sprintf("ChainEdge{Name: %v, From: %v, To: %v}", m.Name, m.From, m.To)
 }
 
+// Generates the name to be used for the edge in the graphql schema
 func getDocEdgeName(name string) string {
 	return strcase.ToLowerCamel(strings.ReplaceAll(name, ".", "_"))
 }

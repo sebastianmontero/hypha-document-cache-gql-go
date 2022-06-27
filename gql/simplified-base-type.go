@@ -2,6 +2,7 @@ package gql
 
 import "fmt"
 
+// Provides the data and functionality common to types and interfaces
 type SimplifiedBaseType struct {
 	Name             string
 	WithSubscription bool
@@ -16,6 +17,7 @@ func NewSimplifiedBaseType(name string, fields map[string]*SimplifiedField) *Sim
 	}
 }
 
+// Returns the fields non array complex types
 func (m *SimplifiedBaseType) GetObjectFields() []*SimplifiedField {
 	objFields := make([]*SimplifiedField, 0)
 	for _, field := range m.Fields {
@@ -26,6 +28,7 @@ func (m *SimplifiedBaseType) GetObjectFields() []*SimplifiedField {
 	return objFields
 }
 
+// Returns the field for the id with the specified name
 func (m *SimplifiedBaseType) GetIdField(name string) (*SimplifiedField, error) {
 	idField := m.GetField(name)
 	if idField == nil {
@@ -38,6 +41,7 @@ func (m *SimplifiedBaseType) GetIdField(name string) (*SimplifiedField, error) {
 	}
 }
 
+// Returns non edge fields
 func (m *SimplifiedBaseType) GetCoreFields() []string {
 	coreFields := make([]string, 0)
 	for name, field := range m.Fields {
@@ -48,6 +52,7 @@ func (m *SimplifiedBaseType) GetCoreFields() []string {
 	return coreFields
 }
 
+// Returns the field with the specified name
 func (m *SimplifiedBaseType) GetField(name string) *SimplifiedField {
 	if field, ok := m.Fields[name]; ok {
 		return field
@@ -60,10 +65,12 @@ func (m *SimplifiedBaseType) HasField(name string) bool {
 	return ok
 }
 
+// Adds/updates the provided field
 func (m *SimplifiedBaseType) SetField(name string, field *SimplifiedField) {
 	m.Fields[name] = field
 }
 
+// Generates the gql query statment to return an instance of this type
 func (m *SimplifiedBaseType) GetStmt(idName string, projection []string) (string, string, error) {
 
 	id, err := m.GetIdField(idName)
@@ -88,6 +95,8 @@ func (m *SimplifiedBaseType) GetStmt(idName string, projection []string) (string
 	return queryName, stmt, nil
 }
 
+// Compares the current type with the provided type compares them and
+// determines the fields that need to be added and the fields that need to be updated
 func (m *SimplifiedBaseType) PrepareFieldUpdate(new *SimplifiedBaseType) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
 	toAdd = make([]*SimplifiedField, 0)
 	toUpdate = make([]*SimplifiedField, 0)

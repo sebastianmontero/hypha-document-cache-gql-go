@@ -9,6 +9,8 @@ import (
 
 type toFieldStmt func(field *SimplifiedField) string
 
+// Stores the data that describes a type and the functionality to
+// manage it
 type SimplifiedType struct {
 	*SimplifiedBaseType
 	Interfaces []string
@@ -31,6 +33,7 @@ func NewSimplifiedType(name string, simplifiedFields map[string]*SimplifiedField
 	return simplifiedType
 }
 
+// Creates a simplified type from the full type definition
 func NewSimplifiedTypeFromType(typeDef *ast.Definition) (*SimplifiedType, error) {
 	fields := make(map[string]*SimplifiedField)
 
@@ -54,12 +57,14 @@ func NewSimplifiedTypeFromType(typeDef *ast.Definition) (*SimplifiedType, error)
 	}, nil
 }
 
+// Adds/Updates the provided fields as map format on the type
 func (m *SimplifiedType) SetFields(fields map[string]*SimplifiedField) {
 	for name, field := range fields {
 		m.Fields[name] = field
 	}
 }
 
+// Adds/Updates the provided fields as array format on the type
 func (m *SimplifiedType) SetFieldArray(fields []*SimplifiedField) {
 	for _, field := range fields {
 		m.Fields[field.Name] = field
@@ -71,6 +76,7 @@ func (m *SimplifiedType) addCoreInterface(coreInterface *SimplifiedInterface) {
 	m.SetFields(coreInterface.Fields)
 }
 
+// Adds the provided interface to the type
 func (m *SimplifiedType) AddInterface(simplifiedInterface *SimplifiedInterface) error {
 	toAdd, toUpdate, err := m.PrepareInterfaceFieldUpdate(simplifiedInterface)
 	if err != nil {
@@ -118,11 +124,13 @@ func (m *SimplifiedType) CloneInterfaces() []string {
 	return interfaces
 }
 
+// Compares the current and new types and determines the fields that need to be added or updated
 func (m *SimplifiedType) PrepareFieldUpdate(new *SimplifiedType) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
 	return m.SimplifiedBaseType.PrepareFieldUpdate(new.SimplifiedBaseType)
 }
 
-func (m *SimplifiedType) PrepareInterfaceFieldUpdate(simplifiedInterface *SimplifiedInterface) (toAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
+// Compares the current and new types and determines the fields that need to be added or updated
+func (m *SimplifiedType) PrepareInterfaceFieldUpdate(simplifiedInterface *SimplifiedInterface) (stoAdd []*SimplifiedField, toUpdate []*SimplifiedField, err error) {
 	return m.SimplifiedBaseType.PrepareFieldUpdate(simplifiedInterface.SimplifiedBaseType)
 }
 
@@ -151,6 +159,7 @@ func (m *SimplifiedType) String() string {
 	)
 }
 
+// Generates the statment required to add an object of this type to the db
 func (m *SimplifiedType) AddMutation(values map[string]interface{}, upsert bool) *Mutation {
 	inputParamName := m.addInputParamNameStmt()
 	upsertParamName := m.upsertParamNameStmt()
@@ -197,6 +206,7 @@ func (m *SimplifiedType) nameStmt(param string) string {
 	)
 }
 
+// Generates the statment required to update an object of this type to the db
 func (m *SimplifiedType) UpdateMutation(idName string, idValue interface{}, set, remove map[string]interface{}) (*Mutation, error) {
 	idField, err := m.GetIdField(idName)
 	if err != nil {
@@ -231,6 +241,7 @@ func (m *SimplifiedType) UpdateMutation(idName string, idValue interface{}, set,
 	}, nil
 }
 
+// Generates the statment required to delete an object of this type to the db
 func (m *SimplifiedType) DeleteMutation(idName string, idValue interface{}) (*Mutation, error) {
 	idField, err := m.GetIdField(idName)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 )
 
+// Provides the functionality to add logical ids to types based on the initial configuration
 type LogicalIds map[string][]string
 
 func NewLogicalIds() LogicalIds {
@@ -16,6 +17,7 @@ func (m LogicalIds) Set(typeName string, ids []string) {
 	m[typeName] = ids
 }
 
+// Adds logical ids to a type
 func (m LogicalIds) ConfigureLogicalIds(simplifiedBaseType *gql.SimplifiedBaseType) error {
 	if ids, ok := m[simplifiedBaseType.Name]; ok {
 		for _, id := range ids {

@@ -9,6 +9,8 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/gql"
 )
 
+// Defines the structs that enable the reading a document as defined on chain
+
 const CGL_ContentGroup = "content_group_label"
 
 const CL_type = "system_type_n"
@@ -22,6 +24,7 @@ const (
 	ContentType_String      = "string"
 )
 
+// Maps on chain type to a gql type
 var ContentTypeGQLTypeMap = map[string]string{
 	ContentType_Asset:       gql.GQLType_String,
 	ContentType_Checksum256: gql.GQLType_String,
@@ -31,6 +34,7 @@ var ContentTypeGQLTypeMap = map[string]string{
 	ContentType_String:      gql.GQLType_String,
 }
 
+// Maps an on chain type to the gql index(es) to use
 var ContentTypeIndexMap = map[string][]string{
 	ContentType_Asset:       {"term"},
 	ContentType_Checksum256: {"exact"},
@@ -40,6 +44,7 @@ var ContentTypeIndexMap = map[string][]string{
 	ContentType_String:      {"regexp"},
 }
 
+// Defines the naming suffix to use for each of the on chain types
 var ContentTypeSuffixMap = map[string]string{
 	ContentType_Asset:       "a",
 	ContentType_Checksum256: "c",
@@ -51,11 +56,13 @@ var ContentTypeSuffixMap = map[string]string{
 
 const CoreEdgeSuffix = "edge"
 
+// Represents a parsed on chain document ready to be used by doccache to update the db accordingly
 type ParsedDoc struct {
 	Instance       *gql.SimplifiedInstance
 	ChecksumFields []string
 }
 
+// Gets the value for the specified document property
 func (m *ParsedDoc) GetValue(name string) interface{} {
 	return m.Instance.GetValue(name)
 }
@@ -68,17 +75,18 @@ func (m *ParsedDoc) NumCoreEdges() int {
 	return len(m.ChecksumFields)
 }
 
-//ChainDocs helper to enable chain docs decoding
+// ChainDocs helper to enable chain docs decoding
 type ChainDocs struct {
 	Docs []*ChainDocument `json:"docs,omitempty"`
 }
 
-//ChainContent domain object
+// Represents a single content of an on chain document
 type ChainContent struct {
 	Label string        `json:"label,omitempty"`
 	Value []interface{} `json:"value,omitempty"`
 }
 
+// Returns the type of the content
 func (m *ChainContent) GetType() string {
 	return m.Value[0].(string)
 }
@@ -87,14 +95,17 @@ func (m *ChainContent) IsChecksum() bool {
 	return m.Value[0].(string) == ContentType_Checksum256
 }
 
+// Returns the gql type that should be used to store this content in the db
 func (m *ChainContent) GetGQLType() string {
 	return GetGQLType(m.GetType())
 }
 
+// Returns the value of the content
 func (m *ChainContent) GetValue() string {
 	return fmt.Sprintf("%v", m.Value[1])
 }
 
+// Returns the value as it should be stored in the db
 func (m *ChainContent) GetGQLValue() (interface{}, error) {
 	gqlType := m.GetGQLType()
 
@@ -116,7 +127,7 @@ func (m *ChainContent) String() string {
 	return fmt.Sprintf("ChainContent{Label: %v, Value: %v}", m.Label, m.Value)
 }
 
-//ChainDocument domain object
+// Represents an on chain document
 type ChainDocument struct {
 	ID            uint64            `json:"id"`
 	CreatedDate   string            `json:"created_date,omitempty"`
@@ -126,10 +137,14 @@ type ChainDocument struct {
 	ContentGroups [][]*ChainContent `json:"content_groups,omitempty"`
 }
 
+// Returns the document Id
 func (m *ChainDocument) GetDocId() string {
 	return strconv.FormatUint(m.ID, 10)
 }
 
+// Transforms an on chain document into a struct that better resembles the format as its going to be
+// stored in the db, the typeMappings is used to try to determine the type of an object based on
+// its fields in case it does not have the type property
 func (m *ChainDocument) ToParsedDoc(typeMappings map[string][]string) (*ParsedDoc, error) {
 
 	fields := make(map[string]*gql.SimplifiedField)
@@ -198,10 +213,12 @@ func GetFieldPrefix(contentGroupLabel string) string {
 	return fmt.Sprintf("%v", strcase.ToLowerCamel(contentGroupLabel))
 }
 
+// Generates the name for a field as its going to be stored in the gql schema
 func GetFieldName(cgPrefix, fieldLabel, fieldType string) string {
 	return fmt.Sprintf("%v_%v_%v", cgPrefix, strcase.ToLowerCamel(fieldLabel), ContentTypeSuffixMap[fieldType])
 }
 
+// Generates the name of the a type as its going to be stored in the gql schema
 func GetObjectTypeName(typeName string) string {
 	return strcase.ToCamel(strings.ReplaceAll(typeName, ".", "_"))
 }
@@ -224,12 +241,14 @@ func IsBaseType(typeName string) bool {
 		typeName == ContentType_Time || typeName == ContentType_String
 }
 
+// Indicates whether the type cab be used as an id
 func IsIDableType(typeName string) bool {
 	return typeName == ContentType_Checksum256 ||
 		typeName == ContentType_Name ||
 		typeName == ContentType_String
 }
 
+// Finds a chain content by its label
 func FindChainContent(contents []*ChainContent, label string) *ChainContent {
 	for _, content := range contents {
 		if content.Label == label {
@@ -239,6 +258,7 @@ func FindChainContent(contents []*ChainContent, label string) *ChainContent {
 	return nil
 }
 
+// Finds the label for the content group
 func GetContentGroupLabel(contents []*ChainContent) (string, error) {
 	contentGroupLabel := FindChainContent(contents, CGL_ContentGroup)
 	if contentGroupLabel == nil {
@@ -247,6 +267,7 @@ func GetContentGroupLabel(contents []*ChainContent) (string, error) {
 	return contentGroupLabel.GetValue(), nil
 }
 
+// Tries to determine the type of a document based on its fields
 func deduceDocType(contentMap map[string]*gql.SimplifiedField, typeMappings map[string][]string) string {
 	for typeName, labels := range typeMappings {
 		if containsLabels(contentMap, labels) {

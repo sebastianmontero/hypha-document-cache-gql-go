@@ -2,6 +2,8 @@ package gql
 
 import "fmt"
 
+// Provides the functionality for applying the configured interfaces
+// to the correct types
 type SimplifiedInterfaces map[string]*SimplifiedInterface
 
 func NewSimplifiedInterfaces() SimplifiedInterfaces {
@@ -17,6 +19,7 @@ func (m SimplifiedInterfaces) HasInterface(name string) bool {
 	return ok
 }
 
+// Determines and applies the interfaces that the type should implement
 func (m SimplifiedInterfaces) ApplyInterfaces(newType, oldType *SimplifiedType) error {
 
 	if oldType != nil {
@@ -58,6 +61,8 @@ func (m SimplifiedInterfaces) GetObjectTypeFields(name string) []*SimplifiedFiel
 	return objFields
 }
 
+// Stores the data that describes an interface and the functionality to
+// manage it
 type SimplifiedInterface struct {
 	*SimplifiedBaseType
 	SignatureFields []string
@@ -77,6 +82,7 @@ func NewSimplifiedInterface(name string, fields map[string]*SimplifiedField, sig
 	}
 }
 
+// Determines if the provided type should implement the interface
 func (m *SimplifiedInterface) ShouldImplement(simplifiedType *SimplifiedType) bool {
 	if _, ok := m.Types[simplifiedType.Name]; ok {
 		return true

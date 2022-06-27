@@ -17,7 +17,7 @@ const DocumentIdName string = "docId"
 
 var log *slog.Log
 
-//Doccache Service class to store and retrieve docs
+//Doccache Service class to store and retrieve docs from dgraph
 type Doccache struct {
 	dgraph *dgraph.Dgraph
 	admin  *gql.Admin
@@ -27,7 +27,7 @@ type Doccache struct {
 	Schema *gql.Schema
 }
 
-//New creates a new doccache
+//New creates a new doccache instance
 func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, config *config.Config, logConfig *slog.Config) (*Doccache, error) {
 	log = slog.New(logConfig, "doccache")
 
@@ -54,7 +54,7 @@ func New(dg *dgraph.Dgraph, admin *gql.Admin, client *gql.Client, config *config
 	return m, nil
 }
 
-//PrepareSchema prepares the base schema
+// Sets up the base gql schema to be used based on the initial configuration
 func (m *Doccache) PrepareSchema() error {
 	log.Infof("Getting current schema...")
 	schema, err := m.admin.GetCurrentSchema()
@@ -82,6 +82,7 @@ func (m *Doccache) PrepareSchema() error {
 	return nil
 }
 
+// Sets up the gql schema for the interfaces specified in the initial configuration
 func (m *Doccache) initializeInterfacesSchema(schema *gql.Schema) error {
 	log.Infof("Initializing interfaces schema...")
 	for _, simplifiedInterface := range m.config.Interfaces {
@@ -109,7 +110,7 @@ func (m *Doccache) initializeInterfacesSchema(schema *gql.Schema) error {
 	return nil
 }
 
-//GetCursor Finds the current cursor
+// Finds the current cursor
 func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 
 	cursor, err := m.client.GetOne(CursorIdName, CursorIdValue, gql.CursorSimplifiedType, nil)
@@ -122,6 +123,7 @@ func (m *Doccache) getCursor() (*gql.SimplifiedInstance, error) {
 	return cursor, nil
 }
 
+// Creates/Updates the docache configuration object stored on the db
 func (m *Doccache) updateDoccacheConfig() error {
 
 	_, err := m.updateSchemaType(gql.DoccacheConfigSimplifiedType)
@@ -148,12 +150,14 @@ func (m *Doccache) updateDoccacheConfig() error {
 	return nil
 }
 
+// Executes a graphql mutation
 func (m *Doccache) mutate(mutation *gql.Mutation, cursor string) error {
 	m.Cursor.SetValue("cursor", cursor)
 	cursorMutation := m.Cursor.AddMutation(true)
 	return m.client.Mutate(mutation, cursorMutation)
 }
 
+// Updates the cursor stored on the db
 func (m *Doccache) UpdateCursor(cursor string) error {
 	m.Cursor.Values["cursor"] = cursor
 	err := m.client.Mutate(m.Cursor.AddMutation(true))
@@ -163,6 +167,8 @@ func (m *Doccache) UpdateCursor(cursor string) error {
 	return nil
 }
 
+// Updates the gql schema for a type based on the differences between the current schema and
+// the newly found object found on chain
 func (m *Doccache) updateSchemaType(simplifiedType *gql.SimplifiedType) (gql.SchemaUpdateOp, error) {
 	updateOp, err := m.Schema.UpdateType(simplifiedType)
 	if err != nil {
@@ -177,6 +183,7 @@ func (m *Doccache) updateSchemaType(simplifiedType *gql.SimplifiedType) (gql.Sch
 	return updateOp, nil
 }
 
+// Updates the schema for an edge based on the newly found edge found on chain
 func (m *Doccache) updateSchemaEdge(typeName, edgeName, edgeType string) error {
 	added, err := m.Schema.UpdateEdge(typeName, edgeName, edgeType)
 	if err != nil {
@@ -191,18 +198,23 @@ func (m *Doccache) updateSchemaEdge(typeName, edgeName, edgeType string) error {
 	return nil
 }
 
+// Returns the document with the specified id
 func (m *Doccache) GetDocumentInstance(docId interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
 	return m.client.GetOne(DocumentIdName, docId, simplifiedType, projection)
 }
 
+// Returns the current cursor
 func (m *Doccache) GetCursorInstance(cursorId interface{}, simplifiedType *gql.SimplifiedType, projection []string) (*gql.SimplifiedInstance, error) {
 	return m.client.GetOne(CursorIdName, cursorId, simplifiedType, projection)
 }
 
+// Returns the current doccache configuration
 func (m *Doccache) GetDoccacheConfigInstance() (*gql.SimplifiedInstance, error) {
 	return m.client.GetOne("id", DoccacheConfigIdValue, gql.DoccacheConfigSimplifiedType, nil)
 }
 
+// Returns the documents with the specified ids, the projection parameter can be used to indicate the properties
+// of the document to be returned
 func (m *Doccache) GetDocumentBaseInstances(ids []interface{}, simplifiedType *gql.SimplifiedBaseType, projection []string) (map[interface{}]*gql.SimplifiedBaseInstance, error) {
 	return m.client.GetBaseInstances(DocumentIdName, ids, simplifiedType, projection)
 }
@@ -267,7 +279,7 @@ func GetEdgeValue(docId interface{}) map[string]interface{} {
 	return map[string]interface{}{"docId": docId}
 }
 
-//DeleteDocument Deletes a document
+// Deletes the document represented by the chainDoc parameter
 func (m *Doccache) DeleteDocument(chainDoc *domain.ChainDocument, cursor string) error {
 	parsedDoc, err := chainDoc.ToParsedDoc(m.config.TypeMappings)
 	if err != nil {

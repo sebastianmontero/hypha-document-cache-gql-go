@@ -24,6 +24,7 @@ const (
 	SchemaUpdateOp_Updated SchemaUpdateOp = "Updated"
 )
 
+// Provides the functionality for keeping track of the current schema state and updating it
 type Schema struct {
 	Schema          *ast.Schema
 	SimplifiedTypes map[string]*SimplifiedType
@@ -33,10 +34,14 @@ func InitialSchema() (*Schema, error) {
 	return NewSchema("", true)
 }
 
+// Initalizes the schema struct from the provided string schema
 func LoadSchema(schemaDef string) (*Schema, error) {
 	return NewSchema(schemaDef, false)
 }
 
+// Creates a new schema struct from the provided string schema, the
+// includeBaseSchema parameter indicates whether the base schema should be added
+// to the provided schema
 func NewSchema(schemaDef string, includeBaseSchema bool) (*Schema, error) {
 	sources := []*ast.Source{
 		DgraphSchemaSource,
@@ -59,6 +64,7 @@ func NewSchema(schemaDef string, includeBaseSchema bool) (*Schema, error) {
 	}, nil
 }
 
+// Returns the simplified type for the type with the specified name
 func (m *Schema) GetSimplifiedType(name string) (*SimplifiedType, error) {
 	simplifiedType, ok := m.SimplifiedTypes[name]
 	if !ok {
@@ -76,6 +82,7 @@ func (m *Schema) GetSimplifiedType(name string) (*SimplifiedType, error) {
 	return simplifiedType, nil
 }
 
+// Returns the full type definition for the type with the specified name
 func (m *Schema) GetType(name string) *ast.Definition {
 	if typeDef, ok := m.Schema.Types[name]; ok {
 		return typeDef
@@ -83,10 +90,14 @@ func (m *Schema) GetType(name string) *ast.Definition {
 	return nil
 }
 
+// Adds/Updates the provided interface to the schema
 func (m *Schema) SetInterface(simplifiedInterface *SimplifiedInterface) {
 	m.Schema.Types[simplifiedInterface.Name] = CreateInterface(simplifiedInterface)
 }
 
+// Updates the schema with the provided type, if the provided type already
+// exists it campares it with the current one to determine the differences
+// and update the schema accordingly
 // Shouldn't need tp worry about interfaces as they have already been applied
 // should be same as old in case its not a new type
 func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
@@ -124,10 +135,12 @@ func (m *Schema) UpdateType(newType *SimplifiedType) (SchemaUpdateOp, error) {
 	return updateOp, nil
 }
 
+// Adds/Updates the schema with the provided edge
 func (m *Schema) UpdateEdge(typeName, edgeName, edgeType string) (bool, error) {
 	return m.UpdateField(typeName, NewEdgeField(edgeName, edgeType))
 }
 
+// Adds/Updates the schema with the specified field
 func (m *Schema) UpdateField(typeName string, field *SimplifiedField) (bool, error) {
 	if field.NonNull {
 		return false, fmt.Errorf("can't add non null field: %v to type: %v", field.Name, typeName)
@@ -161,10 +174,12 @@ func (m *Schema) UpdateField(typeName string, field *SimplifiedField) (bool, err
 	return false, nil
 }
 
+// Returns whether the type extends from document
 func ExtendsDocument(typeDef *ast.Definition) bool {
 	return HasInterface(typeDef, "Document")
 }
 
+// Returns whether the type extends the specified interface
 func HasInterface(typeDef *ast.Definition, interfaceName string) bool {
 	for _, intrfc := range typeDef.Interfaces {
 		if intrfc == interfaceName {
@@ -190,6 +205,7 @@ func (m *Schema) String() string {
 	return out.String()
 }
 
+// Creates a fully defined type from the provided simplified type
 func CreateType(simplifiedType *SimplifiedType) *ast.Definition {
 	interfaces := []string{}
 	interfaces = append(interfaces, simplifiedType.Interfaces...)
@@ -199,10 +215,12 @@ func CreateType(simplifiedType *SimplifiedType) *ast.Definition {
 	return def
 }
 
+// Creates a fully defined interface from the provided simplified interface
 func CreateInterface(simplifiedInterface *SimplifiedInterface) *ast.Definition {
 	return CreateBaseType(ast.Interface, simplifiedInterface.SimplifiedBaseType)
 }
 
+// Creates a fully defined base type from the provided simplified base type
 func CreateBaseType(kind ast.DefinitionKind, simplifiedBaseType *SimplifiedBaseType) *ast.Definition {
 	var fieldDefs ast.FieldList
 	fieldDefs = addFields(simplifiedBaseType.Fields, fieldDefs)
@@ -228,6 +246,7 @@ func addFields(fields map[string]*SimplifiedField, fieldList ast.FieldList) ast.
 	return fieldList
 }
 
+// Creates a fully defined field from the provided simplified field
 func CreateField(field *SimplifiedField) *ast.FieldDefinition {
 
 	fieldType := &ast.Type{

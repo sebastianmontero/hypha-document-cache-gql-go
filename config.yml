@@ -10,7 +10,7 @@ prometheus-port: 2114
 start-block: 147046658
 heart-beat-frequency: 100
 elastic-endpoint: https://hypha.es.eu-west-1.aws.found.io:9243/dho-testnet-documents/_search
-elastic-api-key: ZE0ybXQzNEJKUWhHaGFXUEtzblM6WWJxUHJ6NmZUVWVWVjVBMzFGN3JzQQ==
+elastic-api-key: ZE0***
 type-mappings:
   - type: vote.tally
     labels:

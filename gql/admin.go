@@ -7,6 +7,7 @@ import (
 	"github.com/machinebox/graphql"
 )
 
+// Provides the functionality to interact with the dgraph admin API
 type Admin struct {
 	client *graphql.Client
 }
@@ -17,6 +18,7 @@ func NewAdmin(endpoint string) *Admin {
 	}
 }
 
+// Returns the current graphql schema
 func (m *Admin) GetCurrentSchema() (*Schema, error) {
 	req := graphql.NewRequest(`
 		{
@@ -44,6 +46,7 @@ func (m *Admin) GetCurrentSchema() (*Schema, error) {
 	return LoadSchema(schema)
 }
 
+// Updates the graphql schema
 func (m *Admin) UpdateSchema(schema *Schema) error {
 	req := graphql.NewRequest(`
 		mutation($schema: String!) {
@@ -75,6 +78,7 @@ func (m *Admin) UpdateSchema(schema *Schema) error {
 	return nil
 }
 
+// Queries the dgraph health
 func (m *Admin) Health() (string, error) {
 	req := graphql.NewRequest(`
 		{

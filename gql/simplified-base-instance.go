@@ -7,6 +7,7 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/util"
 )
 
+// Contains the data and functionality common to intances of types and interfaces
 type SimplifiedBaseInstance struct {
 	SimplifiedBaseType *SimplifiedBaseType
 	Values             map[string]interface{}
@@ -19,6 +20,7 @@ func NewSimplifiedBaseInstance(simplifiedBaseType *SimplifiedBaseType, values ma
 	}
 }
 
+// Returns the value for the field with the specified name
 func (m *SimplifiedBaseInstance) GetValue(name string) interface{} {
 	if value, ok := m.Values[name]; ok {
 		if value == nil {
@@ -38,10 +40,12 @@ func (m *SimplifiedBaseInstance) GetValue(name string) interface{} {
 	return nil
 }
 
+// Sets the value for the field with the specified name
 func (m *SimplifiedBaseInstance) SetValue(name string, value interface{}) {
 	m.Values[name] = value
 }
 
+// Returns the value for an id property
 func (m *SimplifiedBaseInstance) GetIdValue(idName string) (interface{}, error) {
 	id, err := m.SimplifiedBaseType.GetIdField(idName)
 	if err != nil {

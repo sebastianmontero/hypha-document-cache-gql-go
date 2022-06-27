@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Loads, validates and stores the initial configuration
 type Config struct {
 	ContractName        string                   `mapstructure:"contract-name"`
 	DocTableName        string                   `mapstructure:"doc-table-name"`
@@ -37,7 +38,8 @@ type Config struct {
 	GQLClientURL        string
 }
 
-// LoadConfig reads configuration from file or environment variables.
+// LoadConfig reads configuration from file or environment variables, validates and structures
+// it to make it easily accesibles
 func LoadConfig(filePath string) (*Config, error) {
 	viper.SetConfigFile(filePath)
 
@@ -77,6 +79,7 @@ func LoadConfig(filePath string) (*Config, error) {
 	return &config, nil
 }
 
+// Processes configuration that allow the identification of types based on the object properties
 func processTypeMappings(raw []map[string]interface{}) (map[string][]string, error) {
 	typeMappings := make(map[string][]string)
 	for _, mapping := range raw {
@@ -95,6 +98,7 @@ func processTypeMappings(raw []map[string]interface{}) (map[string][]string, err
 	return typeMappings, nil
 }
 
+// Processes configuration that defines custom gql interfaces
 func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterfaces, error) {
 	interfaces := gql.NewSimplifiedInterfaces()
 	for _, interfConfig := range config {
@@ -184,6 +188,7 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 	return interfaces, nil
 }
 
+// Processes configuration that defines logical ids for types
 func parseLogicalIdsConfig(config []map[string]interface{}) (domain.LogicalIds, error) {
 	logicalIds := domain.NewLogicalIds()
 	for _, typeConfig := range config {
