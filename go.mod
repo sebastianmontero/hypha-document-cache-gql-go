@@ -19,4 +19,4 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-replace github.com/sebastianmontero/dfuse-firehose-client => ../dfuse-firehose-client
+// replace github.com/sebastianmontero/dfuse-firehose-client => ../dfuse-firehose-client
