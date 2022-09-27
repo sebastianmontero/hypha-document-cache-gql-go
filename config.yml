@@ -1,13 +1,15 @@
 contract-name: mtdhoxhyphaa
 doc-table-name: documents
 edge-table-name: edges
-firehose-endpoint: fh.tekit.io:443
+firehose-endpoint: telostest.firehose.eosnation.io:9000
+dfuse-api-key: dc6087c88050f3caeed46f22767c357c
+dfuse-auth-url: telostest.firehose.eosnation.io:9000
 eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
 dgraph-alpha-http-port: 8080
 prometheus-port: 2114
-start-block: 147046658
+start-block:  
 heart-beat-frequency: 100
 elastic-endpoint: https://hypha.es.eu-west-1.aws.found.io:9243/dho-testnet-documents/_search
 elastic-api-key: ZE0***

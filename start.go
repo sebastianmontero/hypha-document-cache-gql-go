@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/dfuse-io/bstream"
 	pbcodec "github.com/dfuse-io/dfuse-eosio/pb/dfuse/eosio/codec/v1"
-	pbbstream "github.com/dfuse-io/pbgo/dfuse/bstream/v1"
 	"github.com/rs/zerolog"
 	"github.com/sebastianmontero/dfuse-firehose-client/dfclient"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
@@ -17,6 +15,8 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring/metrics"
 	"github.com/sebastianmontero/slog-go/slog"
+	"github.com/streamingfast/bstream"
+	pbbstream "github.com/streamingfast/pbgo/dfuse/bstream/v1"
 )
 
 // Main entry point of the document cache process, configures the dfuse client and defines the stream handler
@@ -143,7 +143,7 @@ func main() {
 		log.Panic(err, "Error seting up prometheus endpoint")
 	}
 
-	client, err := dfclient.NewDfClient(config.FirehoseEndpoint, config.DfuseApiKey, config.EosEndpoint, nil)
+	client, err := dfclient.NewDfClient(config.FirehoseEndpoint, config.DfuseApiKey, config.DfuseAuthURL, config.EosEndpoint, nil)
 	if err != nil {
 		log.Panic(err, "Error creating dfclient")
 	}
