@@ -3,7 +3,7 @@ doc-table-name: documents
 edge-table-name: edges
 firehose-endpoint: telostest.firehose.eosnation.io:9000
 dfuse-api-key: dc6087c88050f3caeed46f22767c357c
-dfuse-auth-url: telostest.firehose.eosnation.io:9000
+dfuse-auth-url: https://auth.eosnation.io
 eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
