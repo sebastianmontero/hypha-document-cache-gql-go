@@ -163,11 +163,14 @@ func AssertField(t *testing.T, expected *gql.SimplifiedField, actual *ast.FieldD
 		argument := directive.Arguments.ForName("by")
 		assert.Assert(t, directive != nil)
 		assert.Equal(t, ast.ListValue, argument.Value.Kind)
-		assert.Equal(t, expected.Indexes.Len(), len(argument.Value.Children))
+		assert.Equal(t, expected.Indexes.Len(), len(argument.Value.Children), fmt.Sprintf("Indexes do not match expected: %v, actual: %v", expected.Indexes, argument.Value.Children[0]))
+		// fmt.Println("")
+		// fmt.Println("")
 		for _, child := range argument.Value.Children {
 			value := child.Value
+			// fmt.Printf("Value: %v\n", value)
 			assert.Assert(t, value != nil)
-			assert.Assert(t, expected.Indexes.Has(value.Raw))
+			assert.Assert(t, expected.Indexes.Has(value.Raw), fmt.Sprintf("Expected to have index for: %v", value))
 			assert.Equal(t, ast.EnumValue, value.Kind)
 		}
 

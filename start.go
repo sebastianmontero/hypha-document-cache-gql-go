@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	pbcodec "github.com/dfuse-io/dfuse-eosio/pb/dfuse/eosio/codec/v1"
+	pbantelope "github.com/pinax-network/firehose-antelope/types/pb/sf/antelope/type/v1"
 	"github.com/rs/zerolog"
 	"github.com/sebastianmontero/dfuse-firehose-client/dfclient"
 	"github.com/sebastianmontero/dgraph-go-client/dgraph"
@@ -15,8 +15,7 @@ import (
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring"
 	"github.com/sebastianmontero/hypha-document-cache-gql-go/monitoring/metrics"
 	"github.com/sebastianmontero/slog-go/slog"
-	"github.com/streamingfast/bstream"
-	pbbstream "github.com/streamingfast/pbgo/dfuse/bstream/v1"
+	pbfirehose "github.com/streamingfast/pbgo/sf/firehose/v2"
 )
 
 // Main entry point of the document cache process, configures the dfuse client and defines the stream handler
@@ -38,14 +37,14 @@ type deltaStreamHandler struct {
 
 // Called every time there is a table delta of interest, determines what the operation is and calls the
 // corresponding doccache method
-func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbbstream.ForkStep) {
+func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, forkStep pbfirehose.ForkStep) {
 	log.Debugf("On Delta: \nCursor: %v \nFork Step: %v \nDelta %v ", cursor, forkStep, delta)
 	log.Debugf("Doc table name: %v ", m.config.DocTableName)
 	if delta.TableName == m.config.DocTableName {
 		chainDoc := &domain.ChainDocument{}
 		switch delta.Operation {
-		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_UPDATE:
-			err := json.Unmarshal(delta.NewData, chainDoc)
+		case pbantelope.DBOp_OPERATION_INSERT, pbantelope.DBOp_OPERATION_UPDATE:
+			err := json.Unmarshal([]byte(delta.NewData), chainDoc)
 			if err != nil {
 				log.Panicf(err, "Error unmarshalling doc new data: %v", string(delta.NewData))
 			}
@@ -55,8 +54,8 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 				log.Panicf(err, "Failed to store doc: %v", chainDoc)
 			}
 			metrics.CreatedDocs.Inc()
-		case pbcodec.DBOp_OPERATION_REMOVE:
-			err := json.Unmarshal(delta.OldData, chainDoc)
+		case pbantelope.DBOp_OPERATION_REMOVE:
+			err := json.Unmarshal([]byte(delta.OldData), chainDoc)
 			if err != nil {
 				log.Panicf(err, "Error unmarshalling doc old data: %v", string(delta.OldData))
 			}
@@ -68,19 +67,19 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 		}
 	} else if delta.TableName == m.config.EdgeTableName {
 		switch delta.Operation {
-		case pbcodec.DBOp_OPERATION_INSERT, pbcodec.DBOp_OPERATION_REMOVE:
+		case pbantelope.DBOp_OPERATION_INSERT, pbantelope.DBOp_OPERATION_REMOVE:
 			var (
-				deltaData []byte
+				deltaData string
 				deleteOp  bool
 			)
 			chainEdge := &domain.ChainEdge{}
-			if delta.Operation == pbcodec.DBOp_OPERATION_INSERT {
+			if delta.Operation == pbantelope.DBOp_OPERATION_INSERT {
 				deltaData = delta.NewData
 			} else {
 				deltaData = delta.OldData
 				deleteOp = true
 			}
-			err := json.Unmarshal(deltaData, chainEdge)
+			err := json.Unmarshal([]byte(deltaData), chainEdge)
 			if err != nil {
 				log.Panicf(err, "Error unmarshalling edge data: %v", chainEdge)
 			}
@@ -94,7 +93,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 				metrics.CreatedEdges.Inc()
 			}
 
-		case pbcodec.DBOp_OPERATION_UPDATE:
+		case pbantelope.DBOp_OPERATION_UPDATE:
 			log.Panicf(nil, "Edge updating is not handled: %v", delta)
 		}
 	}
@@ -104,7 +103,7 @@ func (m *deltaStreamHandler) OnDelta(delta *dfclient.TableDelta, cursor string, 
 
 // Called every certain amount of blocks and its useful to update the cursor when there are
 // no deltas of interest for a long time
-func (m *deltaStreamHandler) OnHeartBeat(block *pbcodec.Block, cursor string) {
+func (m *deltaStreamHandler) OnHeartBeat(block *pbantelope.Block, cursor string) {
 	err := m.doccache.UpdateCursor(cursor)
 	if err != nil {
 		log.Panicf(err, "Failed to update cursor: %v", cursor)
@@ -119,8 +118,8 @@ func (m *deltaStreamHandler) OnError(err error) {
 
 // Called when the requested stream completes, should never be called because there is no
 // final block
-func (m *deltaStreamHandler) OnComplete(lastBlockRef bstream.BlockRef) {
-	log.Infof("On Complete Last Block Ref: %v", lastBlockRef)
+func (m *deltaStreamHandler) OnComplete() {
+	log.Infof("On Complete")
 }
 
 // Loads the configuration file, creates a new dfuse client and configures it with the stream handler
@@ -143,7 +142,7 @@ func main() {
 		log.Panic(err, "Error seting up prometheus endpoint")
 	}
 
-	client, err := dfclient.NewDfClient(config.FirehoseEndpoint, config.DfuseApiKey, config.DfuseAuthURL, config.EosEndpoint, nil)
+	client, err := dfclient.NewDfClient(config.FirehoseEndpoint, config.DfuseJWT, nil)
 	if err != nil {
 		log.Panic(err, "Error creating dfclient")
 	}
@@ -162,7 +161,7 @@ func main() {
 		StartBlockNum:      config.StartBlock,
 		StartCursor:        cache.Cursor.GetValue("cursor").(string),
 		StopBlockNum:       0,
-		ForkSteps:          []pbbstream.ForkStep{pbbstream.ForkStep_STEP_NEW, pbbstream.ForkStep_STEP_UNDO},
+		FinalBlocksOnly:    false,
 		ReverseUndoOps:     true,
 		HeartBeatFrequency: config.HeartBeatFrequency,
 	}

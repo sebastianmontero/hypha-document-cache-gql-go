@@ -1700,7 +1700,7 @@ func TestCustomInterfaceInitialization(t *testing.T) {
 			"details_account_n": {
 				Name:    "details_account_n",
 				Type:    gql.GQLType_String,
-				Indexes: gql.NewIndexes("regexp"),
+				Indexes: gql.NewIndexes("exact", "regexp"),
 			},
 		},
 		[]string{

@@ -1,15 +1,14 @@
 contract-name: mtdhoxhyphaa
 doc-table-name: documents
 edge-table-name: edges
-firehose-endpoint: telostest.firehose.eosnation.io:9000
-dfuse-api-key: dc6087c88050f3caeed46f22767c357c
-dfuse-auth-url: https://auth.eosnation.io
+firehose-endpoint: telostest.firehose.pinax.network:443
+dfuse-jwt: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2FwaS5hY2NvdW50LnBpbmF4Lm5ldHdvcmsvdjEvIiwic3ViIjoiZDllMzYwNTUtZDI3OS00ZTQ2LTgwYzgtNjhlYjQ1NmFmYTAyIiwiYXVkIjpbImh0dHBzOi8vYWNjb3VudC5waW5heC5uZXR3b3JrLyJdLCJleHAiOjIwMjA3NzY2ODIsImlhdCI6MTcwNTQxNjY4MiwiYXBpX2tleV9pZCI6ImI3M2JlMjVmLWMyZjctNDlkZC1iZjA4LWEyMDRkZTc5ZTg5ZCJ9.Qdkm1n7yJP7GxHMDL66yfIS7Kr588wfKUasQhYfBBhc
 eos-endpoint: https://testnet.telos.caleos.io
 dgraph-alpha-host: localhost
 dgraph-alpha-grpc-port: 9080
 dgraph-alpha-http-port: 8080
 prometheus-port: 2114
-start-block:  
+start-block: 271174860
 heart-beat-frequency: 100
 elastic-endpoint: https://hypha.es.eu-west-1.aws.found.io:9243/dho-testnet-documents/_search
 elastic-api-key: ZE0***

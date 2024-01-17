@@ -3,18 +3,17 @@ module github.com/sebastianmontero/hypha-document-cache-gql-go
 go 1.15
 
 require (
-	github.com/dfuse-io/dfuse-eosio v0.9.0-beta9.0.20210812014530-dcb01c5c4b35
-	github.com/iancoleman/strcase v0.1.3
+	github.com/iancoleman/strcase v0.2.0
 	github.com/machinebox/graphql v0.2.2
 	github.com/matryer/is v1.4.0 // indirect
-	github.com/prometheus/client_golang v1.11.0
-	github.com/rs/zerolog v1.20.0
-	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20220927215113-b6b04e42a09c
+	github.com/pinax-network/firehose-antelope v1.0.2
+	github.com/prometheus/client_golang v1.16.0
+	github.com/rs/zerolog v1.28.0
+	github.com/sebastianmontero/dfuse-firehose-client v0.0.0-20240116211353-9c05b81d7583
 	github.com/sebastianmontero/dgraph-go-client v0.0.0-20210213215931-344d1e456654
 	github.com/sebastianmontero/slog-go v0.0.0-20210213204103-60eda76e8d74
-	github.com/spf13/viper v1.8.0
-	github.com/streamingfast/bstream v0.0.2-0.20210811181043-4c1920a7e3e3
-	github.com/streamingfast/pbgo v0.0.6-0.20210811160400-7c146c2db8cc
+	github.com/spf13/viper v1.15.0
+	github.com/streamingfast/pbgo v0.0.6-0.20231208140754-ed2bd10b96ee
 	github.com/vektah/gqlparser v1.3.1
 	gotest.tools v2.2.0+incompatible
 )

@@ -23,8 +23,7 @@ type Config struct {
 	PrometheusPort      uint                     `mapstructure:"prometheus-port"`
 	StartBlock          int64                    `mapstructure:"start-block"`
 	HeartBeatFrequency  uint                     `mapstructure:"heart-beat-frequency"`
-	DfuseApiKey         string                   `mapstructure:"dfuse-api-key"`
-	DfuseAuthURL        string                   `mapstructure:"dfuse-auth-url"`
+	DfuseJWT            string                   `mapstructure:"dfuse-jwt"`
 	ElasticEndpoint     string                   `mapstructure:"elastic-endpoint"`
 	ElasticApiKey       string                   `mapstructure:"elastic-api-key"`
 	TypeMappingsRaw     []map[string]interface{} `mapstructure:"type-mappings"`
@@ -85,7 +84,7 @@ func processTypeMappings(raw []map[string]interface{}) (map[string][]string, err
 	typeMappings := make(map[string][]string)
 	for _, mapping := range raw {
 		fullLabels := make([]string, 0)
-		for groupLabel, labels := range mapping["labels"].(map[interface{}]interface{}) {
+		for groupLabel, labels := range mapping["labels"].(map[string]interface{}) {
 			for _, label := range labels.([]interface{}) {
 				fullLabels = append(fullLabels, fmt.Sprintf("%v_%v", groupLabel, strcase.ToLowerCamel(label.(string))))
 			}
@@ -108,7 +107,7 @@ func parseInterfaceConfig(config []map[string]interface{}) (gql.SimplifiedInterf
 		signatureFields := make([]string, 0)
 		for _, fieldConfigI := range interfConfig["fields"].([]interface{}) {
 
-			fieldConfig := fieldConfigI.(map[interface{}]interface{})
+			fieldConfig := fieldConfigI.(map[string]interface{})
 			fieldContentGroup, hasContentGroup := fieldConfig["content-group"].(string)
 			fieldName := fieldConfig["name"].(string)
 			fieldType := fieldConfig["type"].(string)
@@ -198,7 +197,7 @@ func parseLogicalIdsConfig(config []map[string]interface{}) (domain.LogicalIds, 
 		ids := make([]string, 0, len(idsConfig))
 		for _, idConfigI := range idsConfig {
 
-			idConfig := idConfigI.(map[interface{}]interface{})
+			idConfig := idConfigI.(map[string]interface{})
 			idContentGroup := idConfig["content-group"].(string)
 			idName := idConfig["name"].(string)
 			idType := idConfig["type"].(string)
@@ -235,8 +234,6 @@ func (m *Config) String() string {
 				PrometheusPort: %v
 				StartBlock: %v
 				HeartBeatFrequency: %v
-				DfuseApiKey: %v
-				DfuseAuthURL: %v
 				TypeMappingsRaw: %v
 				TypeMappings: %v
 				GQLAdminURL: %v
@@ -258,8 +255,6 @@ func (m *Config) String() string {
 		m.PrometheusPort,
 		m.StartBlock,
 		m.HeartBeatFrequency,
-		m.DfuseApiKey,
-		m.DfuseAuthURL,
 		m.TypeMappingsRaw,
 		m.TypeMappings,
 		m.GQLAdminURL,

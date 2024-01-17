@@ -9,4 +9,4 @@ dgraph-alpha-http-port: 8080
 prometheus-port: 2114
 start-block: 136860100
 heart-beat-frequency: 100
-dfuse-api-key: server_eeb2882943ae420bfb3eb9bf3d78ed9d
+dfuse-jwt: server_eeb2882943ae420bfb3eb9bf3d78ed9d
